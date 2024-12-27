@@ -52,6 +52,7 @@ const databaseMethods = {
       throw err
     }
   },
+  // Gets full records of items linked to a template via a join table
   getJoinedEntities: async <T>(input: {
     templateId: number
     table: string
@@ -73,6 +74,7 @@ const databaseMethods = {
       throw err
     }
   },
+  // Get the ID of a file-to-template join record
   getFileJoinId: async (templateId: number, fileId: number) => {
     const text = `
       SELECT id FROM template_file_join
@@ -87,6 +89,8 @@ const databaseMethods = {
       throw err
     }
   },
+  // Gets a list of file UIDs that are used by the "generateDoc" action for a
+  // specific template
   getFilesFromDocAction: async (templateId: number): Promise<string[]> => {
     const text = `
       SELECT DISTINCT parameter_queries->>'docTemplateId' AS file_id
@@ -102,12 +106,15 @@ const databaseMethods = {
       throw err
     }
   },
+  // Gets a list of data tables used by "modifyRecord" actions
   getDataTablesFromModifyRecord: async (templateId: number): Promise<string[]> => {
     const text = `
       SELECT DISTINCT parameter_queries->>'tableName' as data_table
       FROM public.template_action
       WHERE template_id = $1
-      AND action_code = 'modifyRecord'
+      AND 
+        (action_code = 'modifyRecord'
+         OR action_code = 'modifyMultipleRecords')
     `
     try {
       const result = await DBConnect.query({ text, values: [templateId], rowMode: 'array' })
@@ -207,6 +214,9 @@ const databaseMethods = {
     )} WHERE ${matchField} = ${matchValueText}`
     await DBConnect.query({ text, values })
   },
+  // Gets the value to use as the next template draft version ID. This would
+  // almost always just be "*", but if other drafts already exist, they get an
+  // additional sequential number, e.g. "*_1", "*_2", etc
   getNextDraftVersionId: async (code: string) => {
     const text = `
       SELECT version_id FROM template
@@ -247,6 +257,9 @@ const databaseMethods = {
       throw err
     }
   },
+  // Data views that can be accessed with the specified permissions. Used to
+  // determine if an applicant would be able to see a particular data view based
+  // on the template permissions
   getAllAccessibleDataViews: async (permissions: string[]): Promise<PgDataView[]> => {
     const text = `
       SELECT *

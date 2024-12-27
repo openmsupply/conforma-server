@@ -1,7 +1,8 @@
 import { FastifyReply } from 'fastify'
 
 /**
- * A standardised Error object to return from the API whenever something is incorrect. We should eventually move to using this for all API routes.
+ * A standardised Error object to return from the API whenever something is
+ * incorrect. We should eventually move to using this for all API routes.
  *
  * Currently only implemented for:
  * - Template Import/Export

@@ -3,7 +3,7 @@ import fsx from 'fs-extra'
 import semverCompare from 'semver/functions/compare'
 import { ApiError } from '../../../ApiError'
 import db from '../databaseMethods'
-import { filterModifiedData } from '../utilities'
+import { filterModifiedData, getTemplateLinkedEntities } from '../utilities'
 import { FILES_FOLDER, FILES_TEMP_FOLDER } from '../../../constants'
 import config from '../../../config'
 import {
@@ -525,6 +525,10 @@ export const installTemplate = async (
         }
       }
     }
+
+    // Finally, update the linked_entity_data field for the new template record
+    const linked_entity_data = await getTemplateLinkedEntities(newTemplateId)
+    await db.updateRecord('template', { linked_entity_data, id: newTemplateId })
 
     await db.commitTransaction()
 

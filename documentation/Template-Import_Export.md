@@ -19,7 +19,7 @@ So the template export and import functionality has been designed to minimize th
 
 ## Checksums
 
-First of all, records for the `permission_name`, `data_view` `data_view_column_definition`, `data_table`,     `template_category`, `filter` and `file` tables have a `checksum` field, which is a SHA-256 hash of the full record. These are automatically updated by database triggers whenever these records are inserted or updated. Lookup tables have a checksum for the whole table at once.
+First of all, records for the `permission_name`, `data_view` `data_view_column_definition`, `data_table`, `template_category`, `filter` and `file` tables have a `checksum` field, which is a SHA-256 hash of the full record. These are automatically updated by database triggers whenever these records are inserted or updated. Lookup tables have a checksum for the whole table at once.
 
 This checksum is used as a comparison to determine if these records have changed compared with what is stored with exported templates.
 

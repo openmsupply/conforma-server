@@ -188,6 +188,7 @@ export const importTemplateInstall = async (
   uid: string,
   installDetails: PreserveExistingEntities
 ) => {
+  console.log(`Attempting to import template: ${uid}...`)
   const sourceFolder = path.join(FILES_TEMP_FOLDER, uid)
   if (!(await fsx.exists(sourceFolder)))
     throw new ApiError(`There is no uploaded template with UID ${uid}`, 400)
@@ -302,6 +303,8 @@ export const installTemplate = async (
       category: preserveCategory,
       files: preserveFiles,
     } = installDetails
+
+    console.log(`Importing template, code: ${template.code} (version ${template.version_id})`)
 
     await db.beginTransaction()
 
@@ -534,6 +537,8 @@ export const installTemplate = async (
     }
 
     await db.commitTransaction()
+
+    console.log(`Import successful! (Template: ${template.code}, version: ${template.version_id})`)
 
     return {
       newTemplateId,

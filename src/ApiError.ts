@@ -14,6 +14,7 @@ export class ApiError extends Error {
     super(message)
     this.status = status
     if (name) this.name = name
+    console.log(`API Error: ${message}`)
   }
 }
 

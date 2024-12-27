@@ -55,6 +55,8 @@ import {
   updateMaintenanceModeInConfig,
 } from './components/other/routeServerStatus'
 import { routeFileLists } from './components/files/routes'
+import { cleanupDataTables } from './lookup-table/utils/cleanupDataTables'
+import { templateRoutes } from './components/template-import-export'
 import { convertHandler, pgMiddleware } from './postgraphile'
 
 require('dotenv').config()
@@ -77,6 +79,7 @@ const startServer = async () => {
   await migrateData()
   await loadActionPlugins() // Connects to Database and listens for Triggers
   createDefaultDataFolders()
+  await cleanupDataTables()
   await updateRowPolicies()
 
   // Add schedulers to global "config" object so we can update them. There
@@ -199,6 +202,7 @@ const startServer = async () => {
         })
 
         server.register(snapshotRoutes, { prefix: '/snapshot' })
+        server.register(templateRoutes, { prefix: '/template' })
         server.get('/updateRowPolicies', routeUpdateRowPolicies)
         server.get('/get-application-data', routeGetApplicationData)
         server.get('/get-all-prefs', routeGetAllPrefs)

@@ -280,6 +280,22 @@ const LookupTableModel = () => {
     await DBConnect.query({ text, values })
   }
 
+  const updateDataTableHash = async (tableName: string, hash: string) => {
+    const text = `UPDATE data_table SET
+      checksum = $2,
+      last_modified = NOW()
+      WHERE table_name = $1`
+    try {
+      await DBConnect.query({
+        text,
+        values: [tableName, hash],
+      })
+      return true
+    } catch (err) {
+      throw err
+    }
+  }
+
   return {
     createStructure,
     getStructureById,
@@ -293,6 +309,7 @@ const LookupTableModel = () => {
     getDataViews,
     updateDataView,
     createDataView,
+    updateDataTableHash,
   }
 }
 export default LookupTableModel

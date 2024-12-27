@@ -9,6 +9,11 @@ import bcrypt from 'bcrypt'
 import { errorMessage, getAppEntryPointDir } from '../../src/components/utilityFunctions'
 import { loadCurrentPrefs, setPreferences } from '../../src/components/preferences'
 import { updateReviewerStats } from '../../src/components/database/updateReviewerStats'
+import {
+  getTemplateLinkedEntities,
+  hashLookupTable,
+  hashRecord,
+} from '../../src/components/template-import-export'
 
 // CONSTANTS
 const FUNCTIONS_FILENAME = '43_views_functions_triggers.sql'
@@ -1185,6 +1190,150 @@ const migrateData = async () => {
       }
     } catch (err) {
       console.log('ERROR regenerating reviewer actions')
+    }
+  }
+
+  if (databaseVersionLessThan('1.4.0')) {
+    console.log('Migrating to v1.4.0...')
+
+    console.log(' - Making permission_name_id field on template_permission non-nullable')
+
+    await DB.changeSchema(`
+      ALTER TABLE template_permission ALTER COLUMN permission_name_id SET NOT NULL;`)
+
+    console.log(' - Adding checksum fields to template-connected tables')
+
+    const tables = [
+      'permission_name',
+      'data_view',
+      'data_view_column_definition',
+      'data_table',
+      'template_category',
+      'filter',
+      'file',
+    ]
+
+    for (const table of tables) {
+      await DB.changeSchema(`ALTER TABLE ${table}
+        ADD COLUMN IF NOT EXISTS checksum varchar,
+        ADD COLUMN IF NOT EXISTS last_modified timestamptz;`)
+    }
+
+    for (const tableName of tables) {
+      if (tableName === 'data_table') continue
+      try {
+        const ids = (
+          await DB.query({
+            text: `
+              SELECT id
+              FROM ${tableName}
+              ORDER BY id;
+          `,
+            rowMode: 'array',
+          })
+        ).rows.flat()
+        for (const id of ids) {
+          await hashRecord({ tableName, id })
+        }
+      } catch (err) {
+        console.log('ERROR generating checksums')
+      }
+    }
+
+    console.log(' - Updating checksum hashes for lookup tables')
+
+    try {
+      const lookupTableIds = (
+        await DB.query({
+          text: `SELECT id FROM public.data_table
+                  WHERE is_lookup_table = TRUE;`,
+          rowMode: 'array',
+        })
+      ).rows.flat()
+
+      for (const tableId of lookupTableIds) {
+        await hashLookupTable(tableId)
+      }
+    } catch (err) {
+      console.log('ERROR generating checksums for lookup tables')
+    }
+
+    console.log(' - Creating JOIN tables for template-related entities')
+    await DB.changeSchema(`
+     CREATE TABLE IF NOT EXISTS public.template_data_view_join (
+        id serial PRIMARY KEY,
+        template_id integer REFERENCES public.template (id) ON DELETE CASCADE NOT NULL,
+        data_view_id integer REFERENCES public.data_view (id) ON DELETE CASCADE NOT NULL,
+        UNIQUE (template_id, data_view_id)
+      );
+      CREATE TABLE IF NOT EXISTS public.template_file_join (
+        id serial PRIMARY KEY,
+        template_id integer REFERENCES public.template (id) ON DELETE CASCADE NOT NULL,
+        file_id integer REFERENCES public.file (id) ON DELETE CASCADE NOT NULL,
+        UNIQUE (template_id, file_id)
+      );
+      `)
+    console.log(' - Adding join entries for existing files, then removing template_id column')
+    try {
+      const filesToUpdate = (
+        await DB.query({
+          text: `
+          SELECT id, template_id FROM public.file
+          WHERE template_id IS NOT NULL;`,
+        })
+      ).rows
+      for (const file of filesToUpdate) {
+        await DB.query({
+          text: `
+          INSERT INTO public.template_file_join (template_id, file_id)
+          VALUES ($1, $2)
+          ON CONFLICT(template_id, file_id) DO NOTHING;`,
+          values: [file.template_id, file.id],
+        })
+      }
+      await DB.changeSchema(`ALTER TABLE public.file
+        DROP COLUMN IF EXISTS template_id;`)
+    } catch (err) {
+      console.log('ERROR creating Join tables - ' + (err as Error).message)
+    }
+
+    console.log(' - Adding linked_entities column to template')
+    await DB.changeSchema(`ALTER TABLE public.template
+      ADD COLUMN IF NOT EXISTS linked_entity_data jsonb;`)
+
+    console.log(' - Generating linked_entity data for existing templates')
+    try {
+      const templateIds = (
+        await DB.query({
+          text: `
+        SELECT id FROM public.template
+          WHERE version_id NOT LIKE '*%'
+          AND linked_entity_data IS NULL;
+        `,
+          rowMode: 'array',
+        })
+      ).rows.flat()
+
+      for (const templateId of templateIds) {
+        try {
+          const linkedEntities = await getTemplateLinkedEntities(templateId)
+          await DB.query({
+            text: `
+          UPDATE template SET linked_entity_data = $2
+          WHERE id = $1
+          `,
+            values: [templateId, JSON.stringify(linkedEntities)],
+          })
+        } catch (err) {
+          console.log(
+            `ERROR: Unable to generate linked entity data for template ${templateId} - ${
+              (err as Error).message
+            }`
+          )
+        }
+      }
+    } catch (err) {
+      console.log('ERROR generating linked entity data for templates - ' + (err as Error).message)
     }
   }
 

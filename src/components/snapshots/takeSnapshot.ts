@@ -42,6 +42,7 @@ import { DateTime } from 'luxon'
 import { createDefaultDataFolders } from '../files/createDefaultFolders'
 import { getArchiveFolders } from '../files/helpers'
 import { errorMessage } from '../utilityFunctions'
+import { cleanupDataTables } from '../../lookup-table/utils/cleanupDataTables'
 
 const TEMP_SNAPSHOT_FOLDER_NAME = '__tempSnapshot'
 const TEMP_ARCHIVE_FOLDER_NAME = '__tempArchive'
@@ -55,6 +56,8 @@ const takeSnapshot: SnapshotOperation = async ({
 }) => {
   // Ensure relevant folders exist
   createDefaultDataFolders()
+
+  await cleanupDataTables()
 
   let archiveInfo: ArchiveInfo = null
 

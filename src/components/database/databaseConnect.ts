@@ -10,9 +10,17 @@ class DBConnect {
     return this._instance || (this._instance = new this())
   }
 
+  public tableJsonColumns = PostgresDB.tableJsonColumns
+
+  public isJsonColumn = PostgresDB.isJsonColumn
+
   public query = PostgresDB.query
 
   public end = PostgresDB.end
+
+  public getRecord = PostgresDB.getRecord
+
+  public getRecordsByField = PostgresDB.getRecordsByField
 
   public getValuesPlaceholders = PostgresDB.getValuesPlaceholders
 

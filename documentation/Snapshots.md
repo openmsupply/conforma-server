@@ -8,7 +8,7 @@ A single file collection of GraphQL mutations that can restore database to the s
 
 - It's easier to see the changes (especially when comparing diff of an operation)
 - It's easier to make manual changes to the mutations in the snapshot
-- Extra flexibility of table filtering via `graphQLdeifnitions.js`
+- Extra flexibility of table filtering via `graphQLdefinitions.js`
 
 ### Temp snapshot
 

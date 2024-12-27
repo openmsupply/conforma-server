@@ -13,8 +13,6 @@ import {
   FilePayload,
   TriggerQueueUpdatePayload,
   UserOrg,
-  ActionResult,
-  TriggerPayload,
   DBOperationType,
 } from '../../types'
 import {
@@ -25,10 +23,12 @@ import {
 } from '../../generated/graphql'
 import { errorMessage } from '../utilityFunctions'
 import { updateReviewerStatsFromDBEvent } from './updateReviewerStats'
+import { hashRecord } from '../template-import-export'
 
 class PostgresDB {
   private static _instance: PostgresDB
   private pool: Pool
+  public tableJsonColumns: Record<string, Set<string>>
 
   constructor() {
     this.pool = new Pool(config.pg_database_connection)
@@ -42,6 +42,24 @@ class PostgresDB {
     })
 
     this.startListener()
+
+    // When updating a row generically, JSON data must be handled differently,
+    // so this is a reference we can use to check which columns are JSON type
+    this.tableJsonColumns = {}
+    this.query({
+      text: `SELECT c.table_name, column_name
+          FROM information_schema.columns c
+          LEFT JOIN information_schema.tables t
+          ON c.table_name = t.table_name
+          WHERE
+          data_type = 'jsonb'
+          AND table_type = 'BASE TABLE'`,
+    }).then((result) => {
+      result.rows.forEach(({ table_name, column_name }) => {
+        if (table_name in this.tableJsonColumns) this.tableJsonColumns[table_name].add(column_name)
+        else this.tableJsonColumns[table_name] = new Set([column_name])
+      })
+    })
   }
 
   private startListener = async () => {
@@ -51,6 +69,7 @@ class PostgresDB {
     listener.query('LISTEN action_notifications')
     listener.query('LISTEN file_notifications')
     listener.query('LISTEN update_reviewer_stats_notification')
+    listener.query('LISTEN recalculate_checksum_notification')
     listener.on('notification', async ({ channel, payload }) => {
       if (!payload) {
         console.log(`Notification ${channel} received with no payload!`)
@@ -89,6 +108,7 @@ class PostgresDB {
           }
         case 'file_notifications':
           deleteFile(payloadObject)
+          break
         case 'update_reviewer_stats_notification':
           // Time delay so this aggregation process doesn't slow down Action
           // execution
@@ -97,6 +117,10 @@ class PostgresDB {
             data: payloadObject,
             action: updateReviewerStatsFromDBEvent,
           })
+          break
+        case 'recalculate_checksum_notification':
+          hashRecord(payloadObject)
+          break
       }
     })
   }
@@ -123,8 +147,61 @@ class PostgresDB {
     }
   }
 
-  public getValuesPlaceholders = (object: { [key: string]: any }) =>
-    Object.keys(object).map((key, index) => `$${index + 1}`)
+  // Generic method to fetch a single full record from any table, by any field
+  // (defaults to "id"). If more than one record matches the query, only the
+  // first one is returned (so try and make sure you only query by a unique
+  // field)
+  public getRecord = async <T>(
+    tableName: string,
+    value: number | string | (number | string)[],
+    field: string | string[] = 'id'
+  ): Promise<T> => {
+    try {
+      const text = Array.isArray(field)
+        ? `SELECT * FROM ${tableName} WHERE ${field
+            .map((val, index) =>
+              index === 0 ? `${val} = $${index + 1}` : `AND ${val} = $${index + 1}`
+            )
+            .join(' ')}`
+        : `SELECT * FROM ${tableName} WHERE ${field} = $1`
+
+      const result = await this.query({
+        text,
+        values: Array.isArray(value) ? [...value] : [value],
+      })
+      return result.rows[0]
+    } catch (err) {
+      console.log(errorMessage(err))
+      throw err
+    }
+  }
+
+  // Generic method to return multiple full records from any table by matching
+  // against any field.
+  public getRecordsByField = async <T>(
+    tableName: string,
+    field: string,
+    value: unknown
+  ): Promise<T[]> => {
+    try {
+      const text = `
+            SELECT * FROM ${tableName} WHERE ${field} = $1
+          `
+      const result = await this.query({ text, values: [value] })
+      return result.rows
+    } catch (err) {
+      console.log(errorMessage(err))
+      throw err
+    }
+  }
+
+  public isJsonColumn = (tableName: string, columnName: string) => {
+    if (!(tableName in this.tableJsonColumns)) return false
+    return this.tableJsonColumns[tableName].has(columnName)
+  }
+
+  public getValuesPlaceholders = (object: { [key: string]: any }, offset: number = 1) =>
+    Object.keys(object).map((_, index) => `$${index + offset}`)
 
   public static get Instance() {
     return this._instance || (this._instance = new this())
@@ -333,15 +410,26 @@ class PostgresDB {
     }
   }
 
-  public addFile = async (payload: FilePayload): Promise<string> => {
-    const text = `INSERT INTO file (${Object.keys(payload)}) 
-      VALUES (${this.getValuesPlaceholders(payload)})
+  public addFile = async (payload: FilePayload): Promise<{ unique_id: string; id: string }> => {
+    const { template_id, ...file } = payload
+    const text = `INSERT INTO file (${Object.keys(file)}) 
+      VALUES (${this.getValuesPlaceholders(file)})
       ON CONFLICT (unique_id) DO UPDATE
-        SET (${Object.keys(payload)}) = (${this.getValuesPlaceholders(payload)})
-        RETURNING unique_id`
+        SET (${Object.keys(file)}) = (${this.getValuesPlaceholders(file)})
+        RETURNING id, unique_id`
     try {
-      const result = await this.query({ text, values: Object.values(payload) })
-      return result.rows[0].unique_id
+      const result = await this.query({ text, values: Object.values(file) })
+      const { unique_id, id } = result.rows[0]
+      if (template_id) {
+        // Create a template_join record
+        await this.query({
+          text: `
+          INSERT INTO template_file_join (template_id, file_id)
+          VALUES ($1, $2);`,
+          values: [template_id, id],
+        })
+      }
+      return { unique_id, id }
     } catch (err) {
       throw err
     }

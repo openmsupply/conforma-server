@@ -22,3 +22,6 @@ export const routeExportLookupTable = async (
     return reply.send(errorMessage(err))
   }
 }
+
+// For server use (re-hashing lookup tables)
+export const getLookupTableData = async (id: number) => await db.getLookupTable(id)

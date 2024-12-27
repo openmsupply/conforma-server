@@ -34,6 +34,7 @@ import {
 } from '../../constants'
 import { findArchiveSources } from '../files/helpers'
 import { errorMessage } from '../utilityFunctions'
+import { cleanupDataTables } from '../../lookup-table/utils/cleanupDataTables'
 
 const useSnapshot: SnapshotOperation = async ({
   snapshotName = DEFAULT_SNAPSHOT_NAME,
@@ -189,6 +190,8 @@ const useSnapshot: SnapshotOperation = async ({
         values: [JSON.stringify(snapshotName)],
       })
     }
+
+    await cleanupDataTables()
 
     refreshConfig(config)
 

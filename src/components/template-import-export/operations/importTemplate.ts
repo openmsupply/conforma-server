@@ -526,9 +526,12 @@ export const installTemplate = async (
       }
     }
 
-    // Finally, update the linked_entity_data field for the new template record
-    const linked_entity_data = await getTemplateLinkedEntities(newTemplateId)
-    await db.updateRecord('template', { linked_entity_data, id: newTemplateId })
+    // Finally, update the linked_entity_data field for the new template record,
+    // (for external imports, not duplicates, which start uncommitted)
+    if (sourceFolder) {
+      const linked_entity_data = await getTemplateLinkedEntities(newTemplateId)
+      await db.updateRecord('template', { linked_entity_data, id: newTemplateId })
+    }
 
     await db.commitTransaction()
 

@@ -3,6 +3,7 @@ import db from '../databaseMethods'
 import { buildTemplateStructure } from '../utilities'
 import { installTemplate } from './importTemplate'
 import { PgTemplate } from '../types'
+import { TemplateStatus } from '../../../generated/graphql'
 
 export const duplicateTemplate = async (templateId: number, newCode?: string) => {
   console.log(`Duplicating template: ${templateId}...`)
@@ -39,6 +40,7 @@ export const duplicateTemplate = async (templateId: number, newCode?: string) =>
   }
 
   templateStructure.version_comment = null
+  templateStructure.status = TemplateStatus.Draft
 
   const newTemplateId = await installTemplate(templateStructure)
 

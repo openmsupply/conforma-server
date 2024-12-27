@@ -87,7 +87,7 @@ const routeTemplateExport = async (
 
   try {
     const filepath = await exportTemplate(templateId)
-    // @ts-ignore
+    // @ts-ignore -- "sendFile" method does exist on reply
     reply.sendFile(filepath)
     fsx.remove(path.join(FILES_FOLDER, filepath))
     return reply

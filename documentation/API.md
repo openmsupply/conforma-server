@@ -576,7 +576,7 @@ A json array of new policies:
 
 `/template`
 
-A range of endpoints for importing and exporting templates. See [Template Import/Export](./Template-Import_Export.md) for the details.
+A range of endpoints for importing and exporting templates. See [Template Import/Export](./Template-Import-Export.md) for the details.
 
 #### Run Action
 

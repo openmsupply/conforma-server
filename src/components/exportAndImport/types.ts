@@ -25,24 +25,12 @@ export type DatabaseTable = {
 export type DatabaseTables = DatabaseTable[]
 
 export type ExportAndImportOptions = {
-  filters: {
-    [tableName: string]: object
-  }
-  includeTables: string[]
   excludeTables: string[]
   shouldReInitialise: boolean
-  usePgDump?: boolean
   skipZip?: boolean
-  insertScriptsLocale: string
-  includeInsertScripts: string[]
-  excludeInsertScripts: string[]
-  // tablesToUpdateOnInsertFail is deprecated, but values are still required (for existing snapshots), they key is change to skipTableOnInsertFail in useSnapshot
-  tablesToUpdateOnInsertFail: string[]
-  skipTableOnInsertFail: string[]
   includeLocalisation?: boolean
   includePrefs?: boolean
   resetFiles: boolean
-  templates?: { resetVersion?: boolean; newCode?: string; checkVersionOnImport?: boolean }
   archive?: ArchiveOption
 }
 

@@ -72,31 +72,18 @@ const takeSnapshot: SnapshotOperation = async ({
 
     // Write snapshot/database to folder
     if (!isArchiveSnapshot) {
-      if (options.usePgDump) {
-        // The quick way, using pg_dump -- whole database only
-        console.log('Dumping database...')
-        execSync(
-          `pg_dump -U postgres tmf_app_manager --format=custom -f ${tempFolder}/database.dump`
-        )
-        // This plain-text .sql script is NOT used for re-import, but could be
-        // useful for debugging when dealing with troublesome snapshots
-        // execSync(
-        //   `pg_dump -U postgres tmf_app_manager --format=plain --inserts --clean --if-exists -f ${tempFolder}/database.sql`
-        // )
-        console.log('Dumping database...done')
+      console.log('Dumping database...')
+      execSync(`pg_dump -U postgres tmf_app_manager --format=custom -f ${tempFolder}/database.dump`)
+      // This plain-text .sql script is NOT used for re-import, but could be
+      // useful for debugging when dealing with troublesome snapshots
+      // execSync(
+      //   `pg_dump -U postgres tmf_app_manager --format=plain --inserts --clean --if-exists -f ${tempFolder}/database.sql`
+      // )
+      console.log('Dumping database...done')
 
-        // Copy ALL files
-        await copyFiles(tempFolder)
-        archiveInfo = await copyArchiveFiles(tempFolder, options.archive)
-      } else {
-        // Do it the old way, using JSON database object export
-        const snapshotObject = await getRecordsAsObject(options)
-        await fs.promises.writeFile(
-          path.join(tempFolder, `${SNAPSHOT_FILE_NAME}.json`),
-          JSON.stringify(snapshotObject, null, 2)
-        )
-        await copyFilesPartial(tempFolder, snapshotObject.file ?? [])
-      }
+      // Copy ALL files
+      await copyFiles(tempFolder)
+      archiveInfo = await copyArchiveFiles(tempFolder, options.archive)
     } else {
       // Archive snapshot
       archiveInfo = await copyArchiveFiles(tempFolder, options.archive)
@@ -110,12 +97,6 @@ const takeSnapshot: SnapshotOperation = async ({
       path.join(tempFolder, `${OPTIONS_FILE_NAME}.json`),
       JSON.stringify(options, null, ' ')
     )
-
-    if (options.shouldReInitialise && !options.usePgDump) {
-      await getSchemaDiff(tempFolder)
-      // Copy schema build script
-      execSync(`cat ${DATABASE_FOLDER}/buildSchema/*.sql >> ${tempFolder}/${SCHEMA_FILE_NAME}.sql`)
-    }
 
     // Copy localisation
     if (options?.includeLocalisation)
@@ -135,8 +116,7 @@ const takeSnapshot: SnapshotOperation = async ({
 
     // Snapshot folder to include timestamp
     const timestampString = DateTime.fromISO(info.timestamp).toFormat('yyyy-LL-dd_HH-mm-ss')
-    const newFolderName = options.usePgDump ? `${snapshotName}_${timestampString}` : snapshotName
-    const fullName = options.usePgDump ? `${snapshotName}_${timestampString}` : snapshotName
+    const newFolderName = `${snapshotName}_${timestampString}`
 
     const fullFolderPath = path.join(
       SNAPSHOT_FOLDER,
@@ -144,13 +124,13 @@ const takeSnapshot: SnapshotOperation = async ({
       newFolderName
     )
 
-    if (!options.skipZip) await zipSnapshot(sourceFolder, fullName)
+    if (!options.skipZip) await zipSnapshot(sourceFolder, newFolderName)
 
     await fs.promises.rename(sourceFolder, fullFolderPath)
     if (isArchiveSnapshot && !options.skipZip)
       await fs.promises.rename(
-        path.join(SNAPSHOT_FOLDER, `${fullName}.zip`),
-        path.join(SNAPSHOT_FOLDER, SNAPSHOT_ARCHIVES_FOLDER_NAME, `${fullName}.zip`)
+        path.join(SNAPSHOT_FOLDER, `${newFolderName}.zip`),
+        path.join(SNAPSHOT_FOLDER, SNAPSHOT_ARCHIVES_FOLDER_NAME, `${newFolderName}.zip`)
       )
 
     await fsx.remove(tempArchiveFolder)
@@ -158,12 +138,12 @@ const takeSnapshot: SnapshotOperation = async ({
 
     // Store snapshot name in database (for full exports only, but not backups)
     if (options.shouldReInitialise && !options.skipZip) {
-      await DBConnect.setSystemInfo('snapshot', fullName)
+      await DBConnect.setSystemInfo('snapshot', newFolderName)
     }
 
     console.log('Taking snapshot...complete!')
 
-    return { success: true, message: `created snapshot ${snapshotName}`, snapshot: fullName }
+    return { success: true, message: `created snapshot ${snapshotName}`, snapshot: newFolderName }
   } catch (e) {
     return { success: false, message: 'error while taking snapshot', error: errorMessage(e) }
   }

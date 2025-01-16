@@ -130,6 +130,7 @@ export interface BaseApplicationData {
   userId: number
   orgId: number | null
   outcome: ApplicationOutcome
+  urlProperties: Record<string, string | number | boolean>
 }
 
 export interface ActionApplicationData extends BaseApplicationData {

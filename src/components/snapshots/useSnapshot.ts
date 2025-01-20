@@ -3,10 +3,10 @@ import fsSync from 'fs'
 import fsx from 'fs-extra'
 import path from 'path'
 import { execSync } from 'child_process'
-import insertData from '../../../database/insertData'
+import StreamZip from 'node-stream-zip'
 import DBConnect from '../../../src/components/database/databaseConnect'
 import { updateRowPolicies } from '../permissions/rowLevelPolicyHelpers'
-import { SnapshotOperation, ExportAndImportOptions, ObjectRecord } from '../exportAndImport/types'
+import { SnapshotOperation } from '../exportAndImport/types'
 import semverCompare from 'semver/functions/compare'
 import config, { refreshConfig } from '../../../src/config'
 // @ts-ignore
@@ -15,10 +15,8 @@ import { createDefaultDataFolders } from '../files/createDefaultFolders'
 import migrateData from '../../../database/migration/migrateData'
 import {
   DEFAULT_SNAPSHOT_NAME,
-  OPTIONS_FILE_NAME,
   FILES_FOLDER,
   SNAPSHOT_FOLDER,
-  SNAPSHOT_OPTIONS_FOLDER,
   PREFERENCES_FILE,
   INFO_FILE_NAME,
   PREFERENCES_FOLDER,
@@ -29,11 +27,7 @@ import { findArchiveSources } from '../files/helpers'
 import { errorMessage } from '../utilityFunctions'
 import { cleanupDataTables } from '../../lookup-table/utils/cleanupDataTables'
 
-const useSnapshot: SnapshotOperation = async ({
-  snapshotName = DEFAULT_SNAPSHOT_NAME,
-  optionsName,
-  options: inOptions,
-}) => {
+const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
   // Ensure relevant folders exist
   createDefaultDataFolders()
 
@@ -42,7 +36,18 @@ const useSnapshot: SnapshotOperation = async ({
 
     const snapshotFolder = path.join(SNAPSHOT_FOLDER, snapshotName)
 
-    const options = await getOptions(snapshotFolder, optionsName, inOptions)
+    if (!fsx.existsSync(snapshotFolder)) {
+      if (!fsx.existsSync(`${snapshotFolder}.zip`))
+        throw new Error('Snapshot missing: ' + snapshotName)
+
+      // If the folder doesn't exist, but the .zip file does, then unzip it and
+      // carry on
+      console.log('Unzipping ' + `${snapshotFolder}.zip`)
+      await fsx.ensureDir(snapshotFolder)
+      const zip = new StreamZip.async({ file: `${snapshotFolder}.zip` })
+      await zip.extract(null, snapshotFolder)
+      await zip.close()
+    }
 
     // Don't proceed if snapshot version higher than current installation
     const infoFile = path.join(snapshotFolder, `${INFO_FILE_NAME}.json`)
@@ -70,9 +75,10 @@ const useSnapshot: SnapshotOperation = async ({
     await collectArchives(snapshotFolder)
     console.log('Collecting archives...done')
 
-    if (options.resetFiles) {
-      execSync(`rm -rf ${FILES_FOLDER}/*`)
-    }
+    // if (options.resetFiles) {
+    // Reset files
+    execSync(`rm -rf ${FILES_FOLDER}/*`)
+    // }
 
     console.log('Restoring database...')
 
@@ -91,23 +97,22 @@ const useSnapshot: SnapshotOperation = async ({
     await copyFiles(snapshotFolder)
 
     // Import preferences
-    if (options?.includePrefs) {
-      try {
-        execSync(`rm -rf ${PREFERENCES_FOLDER}/*`)
-        execSync(`cp '${snapshotFolder}/preferences.json' '${PREFERENCES_FILE}'`)
-      } catch (e) {
-        console.log("Couldn't import preferences")
-      }
+    try {
+      // TO-DO: Make this more robust
+      execSync(`rm -rf ${PREFERENCES_FOLDER}/*`)
+      execSync(`cp '${snapshotFolder}/preferences.json' '${PREFERENCES_FILE}'`)
+    } catch (e) {
+      console.log("Couldn't import preferences")
     }
+
+    // TO-DO: Localisation!????
 
     // Pause to allow postgraphile "watch" to detect changed schema
     delay(1500)
 
     // Migrate database to latest version
-    if (options.shouldReInitialise) {
-      console.log('Migrating database (if required)...)')
-      await migrateData()
-    }
+    console.log('Migrating database (if required)...)')
+    await migrateData()
 
     // Regenerate row level policies
     await updateRowPolicies()
@@ -115,15 +120,13 @@ const useSnapshot: SnapshotOperation = async ({
     // To ensure generic thumbnails are not wiped out, even if server doesn't restart
     createDefaultDataFolders()
 
-    // Store snapshot name in database (for full imports only)
-    if (options.shouldReInitialise) {
-      const text = `INSERT INTO system_info (name, value)
+    // Store snapshot name in database
+    const text = `INSERT INTO system_info (name, value)
       VALUES('snapshot', $1)`
-      await DBConnect.query({
-        text,
-        values: [JSON.stringify(snapshotName)],
-      })
-    }
+    await DBConnect.query({
+      text,
+      values: [JSON.stringify(snapshotName)],
+    })
 
     await cleanupDataTables()
 
@@ -135,26 +138,6 @@ const useSnapshot: SnapshotOperation = async ({
   } catch (e) {
     return { success: false, message: 'error while loading snapshot', error: errorMessage(e) }
   }
-}
-
-const getOptions = async (
-  snapshotFolder: string,
-  optionsName?: string,
-  options?: ExportAndImportOptions
-) => {
-  if (options) {
-    console.log('use options passed as a parameter')
-    return options
-  }
-  let optionsFile = path.join(snapshotFolder, `${OPTIONS_FILE_NAME}.json`)
-
-  if (optionsName) optionsFile = path.join(SNAPSHOT_OPTIONS_FOLDER, `${optionsName}.json`)
-  console.log(`using options from: ${optionsFile}`)
-  const optionsRaw = await fs.readFile(optionsFile, {
-    encoding: 'utf-8',
-  })
-
-  return JSON.parse(optionsRaw)
 }
 
 export const getDirectoryFromPath = (filePath: string) => {

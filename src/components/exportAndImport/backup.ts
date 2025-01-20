@@ -81,9 +81,10 @@ const createBackup = async (password?: string) => {
 
     const { snapshot: archiveSnapshot, error } = await takeSnapshot({
       snapshotName: `archive_${snapshotName}`,
-      optionsName: 'backup',
-      extraOptions: { archive: { from: archiveFrom, to: archiveTo } },
-      isArchiveSnapshot: true,
+      snapshotType: 'backup',
+      archive: { from: archiveFrom, to: archiveTo },
+      // TO-DO: Figure this out
+      // isArchiveSnapshot: true,
     })
 
     if (!archiveSnapshot || error) {
@@ -110,8 +111,8 @@ const createBackup = async (password?: string) => {
   // Make new snapshot with no archives
   const { snapshot, error } = await takeSnapshot({
     snapshotName,
-    optionsName: 'backup',
-    extraOptions: { archive: 'none' },
+    snapshotType: 'backup',
+    archive: 'none',
   })
 
   if (!snapshot || error) {

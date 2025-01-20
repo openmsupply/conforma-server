@@ -4,32 +4,24 @@ import archiver from 'archiver'
 import {
   ArchiveInfo,
   ArchiveOption,
-  ExportAndImportOptions,
   ObjectRecord,
   SnapshotInfo,
   SnapshotOperation,
 } from '../exportAndImport/types'
 import path from 'path'
 import { execSync } from 'child_process'
-import getRecordsAsObject from '../exportAndImport/exportToJson'
 import pgDiffConfig from './pgDiffConfig.json'
 import {
   DEFAULT_SNAPSHOT_NAME,
-  DEFAULT_OPTIONS_NAME,
-  SNAPSHOT_FILE_NAME,
-  OPTIONS_FILE_NAME,
   INFO_FILE_NAME,
   PG_DIFF_CONFIG_FILE_NAME,
   PG_SCHEMA_DIFF_FILE_NAME,
   ROOT_FOLDER,
   SNAPSHOT_FOLDER,
-  SNAPSHOT_OPTIONS_FOLDER,
   FILES_FOLDER,
   LOCALISATION_FOLDER,
-  SCHEMA_FILE_NAME,
   PREFERENCES_FILE,
   PG_DFF_JS_LOCATION,
-  DATABASE_FOLDER,
   ARCHIVE_SUBFOLDER_NAME,
   GENERIC_THUMBNAILS_FOLDER,
   ARCHIVE_FOLDER,
@@ -49,10 +41,8 @@ const TEMP_ARCHIVE_FOLDER_NAME = '__tempArchive'
 
 const takeSnapshot: SnapshotOperation = async ({
   snapshotName = DEFAULT_SNAPSHOT_NAME,
-  optionsName = DEFAULT_OPTIONS_NAME,
-  options: inOptions,
-  extraOptions = {},
-  isArchiveSnapshot = false,
+  snapshotType = 'normal',
+  archive,
 }) => {
   // Ensure relevant folders exist
   createDefaultDataFolders()
@@ -61,7 +51,9 @@ const takeSnapshot: SnapshotOperation = async ({
 
   let archiveInfo: ArchiveInfo = null
 
-  const options = await getOptions(optionsName, inOptions, extraOptions)
+  // const options = await getOptions(optionsName, inOptions, extraOptions)
+
+  const isArchiveSnapshot = snapshotType === 'archive'
 
   try {
     console.log(`Taking ${isArchiveSnapshot ? 'Archive ' : ''}snapshot, name: ${snapshotName}`)
@@ -83,27 +75,27 @@ const takeSnapshot: SnapshotOperation = async ({
 
       // Copy ALL files
       await copyFiles(tempFolder)
-      archiveInfo = await copyArchiveFiles(tempFolder, options.archive)
+      archiveInfo = await copyArchiveFiles(tempFolder, archive)
     } else {
       // Archive snapshot
-      archiveInfo = await copyArchiveFiles(tempFolder, options.archive)
+      archiveInfo = await copyArchiveFiles(tempFolder, archive)
 
       // Move archive files to archive temp folder
       await fsx.move(path.join(tempFolder, 'files', ARCHIVE_SUBFOLDER_NAME), tempArchiveFolder)
     }
 
     // Export config
-    await fs.promises.writeFile(
-      path.join(tempFolder, `${OPTIONS_FILE_NAME}.json`),
-      JSON.stringify(options, null, ' ')
-    )
+    // TO-DO: What to do with this?
+    // await fs.promises.writeFile(
+    //   path.join(tempFolder, `${OPTIONS_FILE_NAME}.json`),
+    //   JSON.stringify(options, null, ' ')
+    // )
 
     // Copy localisation
-    if (options?.includeLocalisation)
-      execSync(`cp -r '${LOCALISATION_FOLDER}/' '${tempFolder}/localisation'`)
+    if (!isArchiveSnapshot) execSync(`cp -r '${LOCALISATION_FOLDER}/' '${tempFolder}/localisation'`)
 
     // Copy prefs
-    if (options?.includePrefs) execSync(`cp '${PREFERENCES_FILE}' '${tempFolder}'`)
+    if (!isArchiveSnapshot) execSync(`cp '${PREFERENCES_FILE}' '${tempFolder}'`)
 
     const sourceFolder = isArchiveSnapshot ? tempArchiveFolder : tempFolder
 
@@ -124,10 +116,12 @@ const takeSnapshot: SnapshotOperation = async ({
       newFolderName
     )
 
-    if (!options.skipZip) await zipSnapshot(sourceFolder, newFolderName)
+    const isBackup = snapshotType === 'backup'
+
+    if (!isBackup) await zipSnapshot(sourceFolder, newFolderName)
 
     await fs.promises.rename(sourceFolder, fullFolderPath)
-    if (isArchiveSnapshot && !options.skipZip)
+    if (isArchiveSnapshot && !isBackup)
       await fs.promises.rename(
         path.join(SNAPSHOT_FOLDER, `${newFolderName}.zip`),
         path.join(SNAPSHOT_FOLDER, SNAPSHOT_ARCHIVES_FOLDER_NAME, `${newFolderName}.zip`)
@@ -137,7 +131,7 @@ const takeSnapshot: SnapshotOperation = async ({
     await fsx.remove(tempFolder)
 
     // Store snapshot name in database (for full exports only, but not backups)
-    if (options.shouldReInitialise && !options.skipZip) {
+    if (!isBackup) {
       await DBConnect.setSystemInfo('snapshot', newFolderName)
     }
 
@@ -147,28 +141,6 @@ const takeSnapshot: SnapshotOperation = async ({
   } catch (e) {
     return { success: false, message: 'error while taking snapshot', error: errorMessage(e) }
   }
-}
-
-const getOptions = async (
-  optionsName?: string,
-  options?: ExportAndImportOptions,
-  extraOptions: Partial<ExportAndImportOptions> = {}
-) => {
-  if (options) {
-    console.log('use options passed as a parameter')
-    return { ...options, ...extraOptions }
-  }
-
-  const optionsFile = path.join(SNAPSHOT_OPTIONS_FOLDER, `${optionsName}.json`)
-
-  console.log(`using options from: ${optionsFile}`)
-  const optionsRaw = await fs.promises.readFile(optionsFile, {
-    encoding: 'utf-8',
-  })
-
-  const parsedOptions = JSON.parse(optionsRaw) as ExportAndImportOptions
-
-  return { ...parsedOptions, ...extraOptions }
 }
 
 export const zipSnapshot = async (
@@ -195,59 +167,6 @@ const getSnapshotInfo = (archiveInfo: ArchiveInfo = null) => {
 
   snapshotInfo.archive = archiveInfo
   return snapshotInfo
-}
-
-const getSchemaDiff = async (newSnapshotFolder: string) => {
-  console.log('creating schema diff ... ')
-  // Creating db to compare to
-  execSync('./database/initialise_database.sh tmf_app_manager_temp', { cwd: ROOT_FOLDER })
-
-  // Changing pgDiff configuration output to new snapshot directory
-  pgDiffConfig.development.compareOptions.outputDirectory = newSnapshotFolder
-
-  await fs.promises.writeFile(
-    path.join(ROOT_FOLDER, `${PG_DIFF_CONFIG_FILE_NAME}.json`),
-    JSON.stringify(pgDiffConfig, null, ' ')
-  )
-
-  // Running diff command, node_modules folder location changes in production build
-  execSync(`node ${PG_DFF_JS_LOCATION} -c development initial-script`, {
-    cwd: ROOT_FOLDER,
-  })
-  // Rename diff file
-
-  const diffFile = fs.readdirSync(newSnapshotFolder).find((file) => file.endsWith('.sql'))
-  if (!diffFile) return
-
-  fs.renameSync(
-    path.join(newSnapshotFolder, diffFile),
-    path.join(newSnapshotFolder, `${PG_SCHEMA_DIFF_FILE_NAME}.sql`)
-  )
-
-  console.log('creating schema diff ... done ')
-}
-
-// Copies a limited set of files, based on the records being exported. Usually
-// used for template export (will copy linked carbone docs, for example).
-const copyFilesPartial = async (newSnapshotFolder: string, fileRecords: ObjectRecord[]) => {
-  // copy only files that associated with exported file records
-  const filePaths = fileRecords.map((fileRecord) => fileRecord.filePath)
-  filePaths.push(...fileRecords.map((fileRecord) => fileRecord.thumbnailPath))
-
-  for (const filePath of [...filePaths]) {
-    try {
-      if (path.dirname(filePath) !== config.genericThumbnailsFolderName) {
-        console.log('copying file', filePath)
-        const destinationDirectory = `${newSnapshotFolder}/files/${getDirectoryFromPath(filePath)}`
-        // -p = no error if exists, create parent
-        execSync(`mkdir -p '${destinationDirectory}'`)
-
-        execSync(`cp '${FILES_FOLDER}/${filePath}' '${destinationDirectory}'`)
-      }
-    } catch (e) {
-      console.log('failed to copy file', e)
-    }
-  }
 }
 
 const copyFiles = async (newSnapshotFolder: string) => {

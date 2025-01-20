@@ -297,6 +297,7 @@ export interface ServerPreferences {
   fileCleanupSchedule?: number[] | ScheduleObject
   backupSchedule?: number[] | ScheduleObject
   backupFilePrefix?: string
+  skipBackup?: boolean
   maxBackupDurationDays?: number
   archiveSchedule?: number[] | ScheduleObject
   archiveFileAgeMinimum?: number

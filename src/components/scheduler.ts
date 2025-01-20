@@ -45,6 +45,8 @@ export class Schedulers {
   private archiveSchedule: Scheduler.Job
   private manualScheduleTimers: Record<string, NodeJS.Timeout>
   constructor() {
+    if (schedulerTestMode)
+      console.log('Scheduler in test mode, will run a scheduled event every 30 seconds...')
     this.actionSchedule = Scheduler.scheduleJob(
       getSchedule('action', schedulerTestMode, config.actionSchedule ?? config?.hoursSchedule),
       () => triggerScheduledActions()
@@ -55,7 +57,13 @@ export class Schedulers {
     )
     this.backupSchedule = Scheduler.scheduleJob(
       getSchedule('backup', schedulerTestMode, config?.backupSchedule) as RecurrenceRule,
-      () => createBackup(process.env.BACKUPS_PASSWORD)
+      () => {
+        if (config.skipBackup) {
+          console.log('Skipping automatic backup')
+          return
+        }
+        createBackup(process.env.BACKUPS_PASSWORD)
+      }
     )
     this.archiveSchedule = Scheduler.scheduleJob(
       getSchedule('archive', schedulerTestMode, config?.archiveSchedule) as RecurrenceRule,

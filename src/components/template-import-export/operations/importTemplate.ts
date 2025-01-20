@@ -529,14 +529,23 @@ export const installTemplate = async (
       }
     }
 
-    // Finally, update the linked_entity_data field for the new template record,
-    // (for external imports, not duplicates, which start uncommitted)
-    if (sourceFolder) {
-      const linked_entity_data = await getTemplateLinkedEntities(newTemplateId)
-      await db.updateRecord('template', { linked_entity_data, id: newTemplateId })
-    }
-
     await db.commitTransaction()
+
+    // Finally, update the linked_entity_data field for the new template record,
+    // (for external imports, not duplicates, which start uncommitted).
+    // We add a timeout to ensure the post-commit triggers (i.e. checksum
+    // updates) have had time to complete
+    if (sourceFolder) {
+      setTimeout(async () => {
+        console.log('Updating linked_entities for new imported template:', template.code)
+        try {
+          const linked_entity_data = await getTemplateLinkedEntities(newTemplateId)
+          await db.updateRecord('template', { linked_entity_data, id: newTemplateId })
+        } catch (err) {
+          console.log(`ERROR: ${(err as ApiError).message}`)
+        }
+      }, 3000)
+    }
 
     console.log(`Import successful! (Template: ${template.code}, version: ${template.version_id})`)
 

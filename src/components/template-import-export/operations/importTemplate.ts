@@ -323,7 +323,7 @@ export const installTemplate = async (
           if (existing.checksum !== checksum)
             await db.updateRecord('template_category', { ...data, id: existing.id })
       } else {
-        categoryId = (await db.insertRecord('template_category', category.data)).id
+        categoryId = await db.insertRecord('template_category', category.data)
       }
     }
 
@@ -374,7 +374,7 @@ export const installTemplate = async (
           if (existing.checksum !== checksum)
             await db.updateRecord('filter', { ...data, id: filter_id })
       } else {
-        filter_id = (await db.insertRecord('filter', data)).id
+        filter_id = await db.insertRecord('filter', data)
       }
 
       const filterJoinRecord = { filter_id, template_id: newTemplateId }
@@ -404,7 +404,7 @@ export const installTemplate = async (
               id: permission_name_id,
             })
       } else {
-        permission_name_id = (await db.insertRecord('permission_name', permissionNameRecord)).id
+        permission_name_id = await db.insertRecord('permission_name', permissionNameRecord)
       }
 
       permissionNameIds[permissionName] = permission_name_id as number
@@ -429,7 +429,7 @@ export const installTemplate = async (
           if (existing.checksum !== checksum)
             await db.updateRecord('data_view', { ...data, id: data_view_id })
       } else {
-        data_view_id = (await db.insertRecord('data_view', data)).id
+        data_view_id = await db.insertRecord('data_view', data)
       }
 
       const dataViewJoinRecord = { data_view_id, template_id: newTemplateId }
@@ -481,7 +481,7 @@ export const installTemplate = async (
           if (existing.checksum !== checksum)
             await db.updateRecord('file', { ...data, id: file_id })
       } else {
-        file_id = (await db.insertRecord('file', data)).id
+        file_id = await db.insertRecord('file', data)
       }
 
       const fileJoinRecord = { file_id, template_id: newTemplateId }

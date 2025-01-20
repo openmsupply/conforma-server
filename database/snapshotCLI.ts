@@ -2,15 +2,6 @@ import takeSnapshot from '../src/components/snapshots/takeSnapshot'
 import useSnapshot from '../src/components/snapshots/useSnapshot'
 import { DEFAULT_SNAPSHOT_NAME, DEFAULT_OPTIONS_NAME } from '../src/constants'
 
-let aliases: { [key: string]: string }
-try {
-  aliases = require('./snapshot_path_aliases.json')
-} catch {
-  console.log('\nWARNING: Missing snapshot_path_aliases.json file\n')
-  aliases = {}
-}
-/* Note: this file should have the same relative path route to `database` as server (i.e. ../database) */
-
 const printUsageMessageAndQuit = (isError = true) => {
   console.log('parameters: take|use|--help [--options <options-json-name>] [<snapshot-name>]')
 
@@ -34,13 +25,9 @@ const getParameter = (parameterName: string, isBooleanParameter = false) => {
   return { isLastParameter: index + 2 === process.argv.length, value: process.argv[index + 1] }
 }
 
-const getSnapshotName = (lastParameterAlreadyRead: boolean) => {
-  if (lastParameterAlreadyRead) return undefined
-  if (process.argv.length <= 3) return 'core_templates'
-
+const getSnapshotName = () => {
   const name = process.argv[process.argv.length - 1]
-  if (name in aliases) return aliases[name]
-  else return name
+  return name ?? 'core_templates'
 }
 
 const doOperation = async () => {
@@ -49,18 +36,16 @@ const doOperation = async () => {
   const isTake = process.argv[2] === 'take'
   const isUse = process.argv[2] === 'use'
 
-  const optionsParameterResult = getParameter('--options')
-
-  const snapshotName = getSnapshotName(optionsParameterResult.isLastParameter)
+  const snapshotName = getSnapshotName()
   if (!isTake && !isUse) printUsageMessageAndQuit()
 
-  console.log(snapshotName, optionsParameterResult)
+  console.log(snapshotName)
   if (isTake) {
-    console.log(await takeSnapshot({ snapshotName, optionsName: optionsParameterResult.value }))
+    console.log(await takeSnapshot({ snapshotName }))
   }
 
   if (isUse) {
-    console.log(await useSnapshot({ snapshotName, optionsName: optionsParameterResult.value }))
+    console.log(await useSnapshot({ snapshotName }))
   }
 
   process.exit(0)

@@ -1,17 +1,15 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import useSnapshot from '../useSnapshot'
 
-type Query = {
-  name?: string
-  optionsName?: string
-}
+const routeUseSnapshot = async (
+  request: FastifyRequest<{ Querystring: { name?: string } }>,
+  reply: FastifyReply
+) => {
+  const snapshotName = request.query.name
 
-const routeUseSnapshot = async (request: FastifyRequest, reply: FastifyReply) => {
-  // TODO can pass through options via post body
-  const snapshotName = (request.query as Query).name
-  const optionsName = (request.query as Query).optionsName
+  if (!snapshotName) return reply.send({ success: false, message: 'error while loading snapshot' })
 
-  reply.send(await useSnapshot({ snapshotName, optionsName }))
+  reply.send(await useSnapshot({ snapshotName }))
 }
 
 export default routeUseSnapshot

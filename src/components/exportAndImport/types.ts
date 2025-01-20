@@ -53,12 +53,12 @@ export type InsertedRecords = {
   }[]
 }
 
+export type SnapshotType = 'normal' | 'archive' | 'backup'
+
 export type SnapshotOperation = (props: {
-  snapshotName?: string
-  optionsName?: string
-  options?: ExportAndImportOptions
-  extraOptions?: Partial<ExportAndImportOptions>
-  isArchiveSnapshot?: boolean
+  snapshotName: string
+  snapshotType?: SnapshotType
+  archive?: ArchiveOption
 }) => Promise<{ success: boolean; message: string; error?: string; snapshot?: string }>
 
 export type ArchiveSnapshotOperation = (props: {

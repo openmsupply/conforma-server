@@ -35,7 +35,6 @@ import {
 import { findArchiveSources } from '../files/helpers'
 import { errorMessage } from '../utilityFunctions'
 import { cleanupDataTables } from '../../lookup-table/utils/cleanupDataTables'
-import { getTemplateLinkedEntities } from '../template-import-export'
 
 const useSnapshot: SnapshotOperation = async ({
   snapshotName = DEFAULT_SNAPSHOT_NAME,
@@ -145,41 +144,6 @@ const useSnapshot: SnapshotOperation = async ({
       })
 
       await copyFilesPartial(snapshotFolder, insertedRecords.file)
-
-      // Update linked_entity_data for new import/export system
-      try {
-        const templateIds = (
-          await DBConnect.query({
-            text: `
-          SELECT id FROM public.template
-            WHERE version_id NOT LIKE '*%'
-            AND linked_entity_data IS NULL;
-          `,
-            rowMode: 'array',
-          })
-        ).rows.flat()
-
-        for (const templateId of templateIds) {
-          try {
-            const linkedEntities = await getTemplateLinkedEntities(templateId)
-            await DBConnect.query({
-              text: `
-            UPDATE template SET linked_entity_data = $2
-            WHERE id = $1
-            `,
-              values: [templateId, JSON.stringify(linkedEntities)],
-            })
-          } catch (err) {
-            console.log(
-              `ERROR: Unable to generate linked entity data for template ${templateId} - ${
-                (err as Error).message
-              }`
-            )
-          }
-        }
-      } catch (err) {
-        console.log('ERROR generating linked entity data for templates - ' + (err as Error).message)
-      }
     }
 
     // Import localisations

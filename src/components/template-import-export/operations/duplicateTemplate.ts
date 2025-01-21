@@ -40,6 +40,7 @@ export const duplicateTemplate = async (templateId: number, newCode?: string) =>
   }
 
   templateStructure.version_comment = null
+  templateStructure.version_timestamp = new Date()
   templateStructure.status = TemplateStatus.Draft
 
   const newTemplateId = await installTemplate(templateStructure)

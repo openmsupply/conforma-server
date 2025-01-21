@@ -163,11 +163,15 @@ const databaseMethods = {
       UPDATE template SET
         version_id = $2,
         version_comment = $3,
-        linked_entity_data = $4
+        linked_entity_data = $4,
+        version_timestamp = $5
         WHERE id = $1;`
 
     try {
-      await DBConnect.query({ text, values: [templateId, versionId, comment, entityData] })
+      await DBConnect.query({
+        text,
+        values: [templateId, versionId, comment, entityData, new Date()],
+      })
     } catch (err) {
       console.log(errorMessage(err))
       throw err

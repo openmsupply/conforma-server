@@ -14,7 +14,6 @@ import delay from 'delay-sync'
 import { createDefaultDataFolders } from '../files/createDefaultFolders'
 import migrateData from '../../../database/migration/migrateData'
 import {
-  DEFAULT_SNAPSHOT_NAME,
   FILES_FOLDER,
   SNAPSHOT_FOLDER,
   PREFERENCES_FILE,
@@ -22,6 +21,7 @@ import {
   PREFERENCES_FOLDER,
   ARCHIVE_TEMP_FOLDER,
   ARCHIVE_SUBFOLDER_NAME,
+  LOCALISATION_FOLDER,
 } from '../../constants'
 import { findArchiveSources } from '../files/helpers'
 import { errorMessage } from '../utilityFunctions'
@@ -75,10 +75,8 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
     await collectArchives(snapshotFolder)
     console.log('Collecting archives...done')
 
-    // if (options.resetFiles) {
-    // Reset files
+    // Reset existing files folder
     execSync(`rm -rf ${FILES_FOLDER}/*`)
-    // }
 
     console.log('Restoring database...')
 
@@ -98,14 +96,23 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
 
     // Import preferences
     try {
-      // TO-DO: Make this more robust
-      execSync(`rm -rf ${PREFERENCES_FOLDER}/*`)
-      execSync(`cp '${snapshotFolder}/preferences.json' '${PREFERENCES_FILE}'`)
+      console.log('Importing preferences')
+      await fsx.remove(PREFERENCES_FOLDER)
+      await fsx.ensureDir(PREFERENCES_FOLDER)
+      await fsx.copy(path.join(snapshotFolder, 'preferences.json'), PREFERENCES_FILE)
     } catch (e) {
       console.log("Couldn't import preferences")
     }
 
-    // TO-DO: Localisation!????
+    // Import localisation
+    try {
+      console.log('Importing localisations')
+      await fsx.remove(LOCALISATION_FOLDER)
+      await fsx.ensureDir(LOCALISATION_FOLDER)
+      await fsx.copy(path.join(snapshotFolder, 'localisation'), LOCALISATION_FOLDER)
+    } catch (e) {
+      console.log("Couldn't import localisations")
+    }
 
     // Pause to allow postgraphile "watch" to detect changed schema
     delay(1500)
@@ -118,7 +125,7 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
     await updateRowPolicies()
 
     // To ensure generic thumbnails are not wiped out, even if server doesn't restart
-    createDefaultDataFolders()
+    // createDefaultDataFolders()
 
     // Store snapshot name in database
     const text = `INSERT INTO system_info (name, value)
@@ -138,11 +145,6 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
   } catch (e) {
     return { success: false, message: 'error while loading snapshot', error: errorMessage(e) }
   }
-}
-
-export const getDirectoryFromPath = (filePath: string) => {
-  const [_, ...directory] = filePath.split('/').reverse()
-  return directory.join('/')
 }
 
 const copyFiles = async (snapshotFolder: string) => {

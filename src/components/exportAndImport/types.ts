@@ -41,18 +41,6 @@ export interface SnapshotInfo {
   archive?: ArchiveInfo
 }
 
-export type ObjectRecord = { [columnName: string]: any }
-export type ObjectRecords = {
-  [tableName: string]: ObjectRecord[]
-}
-
-export type InsertedRecords = {
-  [tableName: string]: {
-    old: ObjectRecord
-    new: ObjectRecord
-  }[]
-}
-
 export type SnapshotType = 'normal' | 'archive' | 'backup'
 
 export type SnapshotOperation = (props: {

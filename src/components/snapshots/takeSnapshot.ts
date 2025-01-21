@@ -4,30 +4,23 @@ import archiver from 'archiver'
 import {
   ArchiveInfo,
   ArchiveOption,
-  ObjectRecord,
   SnapshotInfo,
   SnapshotOperation,
 } from '../exportAndImport/types'
 import path from 'path'
 import { execSync } from 'child_process'
-import pgDiffConfig from './pgDiffConfig.json'
 import {
   DEFAULT_SNAPSHOT_NAME,
   INFO_FILE_NAME,
-  PG_DIFF_CONFIG_FILE_NAME,
-  PG_SCHEMA_DIFF_FILE_NAME,
-  ROOT_FOLDER,
   SNAPSHOT_FOLDER,
   FILES_FOLDER,
   LOCALISATION_FOLDER,
   PREFERENCES_FILE,
-  PG_DFF_JS_LOCATION,
   ARCHIVE_SUBFOLDER_NAME,
   GENERIC_THUMBNAILS_FOLDER,
   ARCHIVE_FOLDER,
   SNAPSHOT_ARCHIVES_FOLDER_NAME,
 } from '../../constants'
-import { getDirectoryFromPath } from './useSnapshot'
 import DBConnect from '../../../src/components/database/databaseConnect'
 import config from '../../config'
 import { DateTime } from 'luxon'
@@ -50,8 +43,6 @@ const takeSnapshot: SnapshotOperation = async ({
   await cleanupDataTables()
 
   let archiveInfo: ArchiveInfo = null
-
-  // const options = await getOptions(optionsName, inOptions, extraOptions)
 
   const isArchiveSnapshot = snapshotType === 'archive'
 
@@ -83,13 +74,6 @@ const takeSnapshot: SnapshotOperation = async ({
       // Move archive files to archive temp folder
       await fsx.move(path.join(tempFolder, 'files', ARCHIVE_SUBFOLDER_NAME), tempArchiveFolder)
     }
-
-    // Export config
-    // TO-DO: What to do with this?
-    // await fs.promises.writeFile(
-    //   path.join(tempFolder, `${OPTIONS_FILE_NAME}.json`),
-    //   JSON.stringify(options, null, ' ')
-    // )
 
     // Copy localisation
     if (!isArchiveSnapshot) execSync(`cp -r '${LOCALISATION_FOLDER}/' '${tempFolder}/localisation'`)

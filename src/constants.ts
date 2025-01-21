@@ -6,7 +6,6 @@ export const DEFAULT_SNAPSHOT_NAME = 'current'
 export const BASE_SNAPSHOT_NAME = 'core_templates'
 export const DEFAULT_OPTIONS_NAME = 'default'
 export const SNAPSHOT_SUBFOLDER = '_snapshots'
-export const OPTIONS_SUBFOLDER = 'snapshotOptions'
 export const SNAPSHOT_FILE_NAME = 'snapshot'
 export const ARCHIVE_SUBFOLDER_NAME = '_ARCHIVE'
 export const ARCHIVE_TEMP_FOLDER_NAME = 'TEMP_Archives'
@@ -15,8 +14,6 @@ export const OPTIONS_FILE_NAME = 'options'
 export const FILES_TEMP_FOLDER_NAME = '__TEMP_Files'
 export const INFO_FILE_NAME = 'info'
 export const SCHEMA_FILE_NAME = 'schema_init'
-export const PG_DIFF_CONFIG_FILE_NAME = 'pg-diff-config'
-export const PG_SCHEMA_DIFF_FILE_NAME = 'schema_diff'
 export const PREFERENCES_FILE_NAME = config.preferencesFileName
 export const DEFAULT_LOGOUT_TIME = 60 // Minutes
 
@@ -46,9 +43,3 @@ export const GENERIC_THUMBNAILS_SOURCE_FOLDER = path.join(
 )
 export const GENERIC_THUMBNAILS_FOLDER = path.join(FILES_FOLDER, config.genericThumbnailsFolderName)
 export const BASE_SNAPSHOT_FOLDER = path.join(DATABASE_FOLDER, BASE_SNAPSHOT_NAME)
-export const PG_DFF_JS_LOCATION = path.join(
-  getAppEntryPointDir(),
-  config.nodeModulesFolder,
-  'pg-diff-cli',
-  'main.js'
-)

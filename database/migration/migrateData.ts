@@ -1337,6 +1337,17 @@ const migrateData = async () => {
     }
   }
 
+  if (databaseVersionLessThan('1.5.0')) {
+    console.log('Migrating to v1.5.0...')
+
+    console.log(' - Adding url_properties to application table')
+
+    await DB.changeSchema(`
+      ALTER TABLE public.application   
+        ADD COLUMN IF NOT EXISTS url_properties jsonb;
+    `)
+  }
+
   // Other version migrations continue here...
 
   // Update (almost all) Indexes, Views, Functions, Triggers regardless, since

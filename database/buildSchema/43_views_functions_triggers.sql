@@ -97,7 +97,8 @@ SELECT
     status.status,
     status.time_created AS status_history_time_created,
     status.is_current AS status_is_current,
-    application.outcome
+    application.outcome,
+    COALESCE(application.url_properties, '{}') AS application_url_properties
 FROM
     application
     JOIN TEMPLATE ON application.template_id = template.id

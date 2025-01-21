@@ -25,7 +25,6 @@ export const MAX_32_BIT_INT = 2_147_483_647
 export const ROOT_FOLDER = path.join(getAppEntryPointDir(), '../')
 export const DATABASE_FOLDER = path.join(getAppEntryPointDir(), config.databaseFolder)
 export const SNAPSHOT_FOLDER = path.join(DATABASE_FOLDER, SNAPSHOT_SUBFOLDER)
-export const SNAPSHOT_OPTIONS_FOLDER = path.join(DATABASE_FOLDER, OPTIONS_SUBFOLDER)
 export const SNAPSHOT_ARCHIVE_FOLDER = path.join(SNAPSHOT_FOLDER, SNAPSHOT_ARCHIVES_FOLDER_NAME)
 export const BACKUPS_FOLDER = path.join(getAppEntryPointDir(), config.backupsFolder)
 export const FILES_FOLDER = path.join(getAppEntryPointDir(), config.filesFolder)

@@ -22,6 +22,7 @@ import {
   ARCHIVE_TEMP_FOLDER,
   ARCHIVE_SUBFOLDER_NAME,
   LOCALISATION_FOLDER,
+  ARCHIVE_FOLDER,
 } from '../../constants'
 import { findArchiveSources } from '../files/helpers'
 import { errorMessage } from '../utilityFunctions'
@@ -178,7 +179,17 @@ const collectArchives = async (snapshotFolder: string) => {
   // Copy all archives to temp folder
   await fsx.emptyDir(ARCHIVE_TEMP_FOLDER)
   for (const [source, folder] of archiveSources) {
-    await fsx.copy(path.join(source, folder), path.join(ARCHIVE_TEMP_FOLDER, folder))
+    // For archives that are already in the current active system
+    // (`/files/_ARCHIVE`), it's a lot faster to just MOVE them rather than
+    // copy. Archives found elsewhere must be copied, as we don't want to
+    // destroy the source.
+    if (source.startsWith(ARCHIVE_FOLDER)) {
+      console.log('Moving current archive:', folder)
+      await fsx.move(path.join(source, folder), path.join(ARCHIVE_TEMP_FOLDER, folder))
+    } else {
+      console.log('Copying stored archive:', folder)
+      await fsx.copy(path.join(source, folder), path.join(ARCHIVE_TEMP_FOLDER, folder))
+    }
   }
 }
 

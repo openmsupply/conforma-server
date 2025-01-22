@@ -126,7 +126,8 @@ const databaseMethods = {
   },
   getLinkedDataTables: async (tableNames: string[]): Promise<PgDataTable[]> => {
     const text = `
-      SELECT table_name, checksum, last_modified
+      SELECT table_name, display_name, field_map,
+          data_view_code, checksum, last_modified
         FROM data_table
         WHERE table_name = ANY($1)
         AND is_lookup_table = TRUE;

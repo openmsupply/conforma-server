@@ -113,18 +113,11 @@ export const importTemplateUpload = async (folderName: string) => {
     ? await getModifiedEntities({ [categoryCode]: category }, 'template_category', 'code')
     : {}
 
-  const changedDataTables: Record<string, unknown> = {}
-  for (const dataTable of Object.keys(dataTables)) {
-    const existing = await db.getRecord<PgDataTable>('data_table', dataTable, 'table_name')
-    if (existing.checksum !== dataTables[dataTable].checksum) {
-      const { lastModified, checksum } = dataTables[dataTable]
-      const { last_modified, checksum: existingChecksum } = existing
-      changedDataTables[dataTable] = {
-        incoming: { lastModified, checksum },
-        current: { lastModified: last_modified, checksum: existingChecksum },
-      }
-    }
-  }
+  const changedDataTables: Record<string, unknown> = await getModifiedEntities(
+    dataTables,
+    'data_table',
+    'table_name'
+  )
 
   return {
     filters: changedFilters,
@@ -174,12 +167,16 @@ export const getSingleEntityDiff = async (
   const { checksum, last_modified, id, ...existingData } = existing
 
   if (table === 'file') {
+    // Don't worry about these fields
     ;['user_id', 'application_response_id', 'application_note_id', 'application_serial'].forEach(
       (column) => {
         delete existingData[column]
       }
     )
   }
+
+  // is_lookup_table is always true
+  if (table === 'data_table') delete existingData.is_lookup_table
 
   return { incoming: matchPropertyOrder(templateData.data, existingData), current: existingData }
 }

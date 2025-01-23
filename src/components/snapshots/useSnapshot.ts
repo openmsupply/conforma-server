@@ -108,8 +108,7 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
     // Import preferences
     try {
       console.log('Importing preferences')
-      await fsx.remove(PREFERENCES_FOLDER)
-      await fsx.ensureDir(PREFERENCES_FOLDER)
+      await fsx.emptyDir(PREFERENCES_FOLDER)
       await fsx.copy(path.join(snapshotFolder, 'preferences.json'), PREFERENCES_FILE)
     } catch (e) {
       console.log("Couldn't import preferences")
@@ -119,8 +118,7 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
     // Import localisation
     try {
       console.log('Importing localisations')
-      await fsx.remove(LOCALISATION_FOLDER)
-      await fsx.ensureDir(LOCALISATION_FOLDER)
+      await fsx.emptyDir(LOCALISATION_FOLDER)
       await fsx.copy(path.join(snapshotFolder, 'localisation'), LOCALISATION_FOLDER)
     } catch (e) {
       console.log("Couldn't import localisations")

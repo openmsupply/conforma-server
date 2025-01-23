@@ -55,6 +55,61 @@ const databaseMethods = {
     )
     return result?.dataTable
   },
+  getAllDataTableRecords: async () => {
+    try {
+      const result = await DBConnect.query({
+        text: `SELECT id, table_name FROM public.data_table`,
+      })
+      return result.rows
+    } catch (err) {
+      console.log(errorMessage(err))
+      throw err
+    }
+  },
+  getAllDataTableNames: async () => {
+    try {
+      const result = await DBConnect.query({
+        text: `
+          SELECT table_name FROM information_schema.tables
+          WHERE table_schema = 'public'
+          AND table_name LIKE '${config.dataTablePrefix}%'
+          AND table_name NOT LIKE '%_application_join'
+        `,
+        rowMode: 'array',
+      })
+      return result.rows.flat()
+    } catch (err) {
+      console.log(errorMessage(err))
+      throw err
+    }
+  },
+  dropDataTable: async (tableName: string) => {
+    try {
+      await DBConnect.query({
+        text: `
+          DROP TABLE IF EXISTS ${tableName} CASCADE;
+          DROP TABLE IF EXISTS ${tableName}_application_join CASCADE;
+        `,
+      })
+    } catch (err) {
+      console.log(errorMessage(err))
+      throw err
+    }
+  },
+  deleteDataTableRecord: async (id: number) => {
+    try {
+      await DBConnect.query({
+        text: `
+          DELETE from public.data_table
+          WHERE id = $1;
+        `,
+        values: [id],
+      })
+    } catch (err) {
+      console.log(errorMessage(err))
+      throw err
+    }
+  },
 }
 
 export default databaseMethods

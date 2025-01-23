@@ -14,7 +14,7 @@ import DBConnect from '../database/databaseConnect'
 import { DateTime } from 'luxon'
 import fs from 'fs'
 import path from 'path'
-import { crawlFileSystem, errorMessage } from '../utilityFunctions'
+import { clearEmptyDirectories, crawlFileSystem, errorMessage } from '../utilityFunctions'
 import { deleteFile } from '../files/deleteFiles'
 import { ARCHIVE_FOLDER, FILES_FOLDER, GENERIC_THUMBNAILS_FOLDER } from '../../constants'
 
@@ -62,6 +62,7 @@ export const cleanUpFiles = async () => {
       'Cleaning up files and file records...'
     )
     await crawlFileSystem(FILES_FOLDER, checkFile)
+    await clearEmptyDirectories(FILES_FOLDER)
     const recordsMissingFiles = await processMissingFileLinks()
     const filesCleanedUp = await DBConnect.cleanUpFiles()
 

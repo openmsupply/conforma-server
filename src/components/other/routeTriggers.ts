@@ -58,11 +58,14 @@ const checkTriggers = (
   const triggersProcessing = flattenedTriggers.filter((t) => t.trigger === 'PROCESSING')
   const triggersError = flattenedTriggers.filter((t) => t.trigger === 'ERROR')
   const triggersReady = flattenedTriggers.filter((t) => t.trigger === null)
+
   if (triggersError.length > 0) return { status: 'error', errors: triggersError }
   if (triggersProcessing.length > 0) return { status: 'processing' }
-  // This would only happen if triggers were disabled in back-end
-  if (triggersReady.length !== flattenedTriggers.length)
-    return { status: 'error', errors: triggersReady }
+
+  // This can happen if the trigger is still the actual initial value (e.g.
+  // "ON_APPLICATION_SUBMIT" and hasn't been updated by the trigger_queue
+  // process yet)
+  if (triggersReady.length !== flattenedTriggers.length) return { status: 'processing', errors: [] }
   // Good to go!
   return { status: 'ready' }
 }

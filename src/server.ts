@@ -56,6 +56,10 @@ import {
 } from './components/other/routeServerStatus'
 import { routeFileLists } from './components/files/routes'
 import { routeGetFigTreeFragments } from './components/fig-tree-evaluator/routeGetFigTreeFragments'
+import { cleanupDataTables } from './lookup-table/utils/cleanupDataTables'
+import { templateRoutes } from './components/template-import-export'
+import { convertHandler, pgMiddleware } from './postgraphile'
+
 require('dotenv').config()
 
 // Set the default locale and timezone for date-time display (in console)
@@ -76,7 +80,7 @@ const startServer = async () => {
   await migrateData()
   await loadActionPlugins() // Connects to Database and listens for Triggers
   createDefaultDataFolders()
-  await cleanUpFiles() // Runs on schedule as well as startup
+  await cleanupDataTables()
   await updateRowPolicies()
 
   // Add schedulers to global "config" object so we can update them. There
@@ -95,6 +99,33 @@ const startServer = async () => {
   server.register(fastifyCors, { origin: '*' }) // Allow all origin (TODO change in PROD)
 
   server.register(fastifyWebsocket)
+
+  // Register Postgraphile Middleware
+  server.options(pgMiddleware.graphqlRoute, convertHandler(pgMiddleware.graphqlRouteHandler))
+  server.post(pgMiddleware.graphqlRoute, convertHandler(pgMiddleware.graphqlRouteHandler))
+
+  // Postgraphile GraphiQL
+  if (pgMiddleware.options.graphiql && pgMiddleware.graphiqlRouteHandler) {
+    server.head(pgMiddleware.graphiqlRoute, convertHandler(pgMiddleware.graphiqlRouteHandler))
+    server.get(pgMiddleware.graphiqlRoute, convertHandler(pgMiddleware.graphiqlRouteHandler))
+    if (pgMiddleware.faviconRouteHandler) {
+      server.get('/favicon.ico', convertHandler(pgMiddleware.faviconRouteHandler))
+    }
+  }
+
+  // Postgraphile "Watch" mode
+  if (pgMiddleware.options.watchPg) {
+    if (pgMiddleware.eventStreamRouteHandler) {
+      server.options(
+        pgMiddleware.eventStreamRoute,
+        convertHandler(pgMiddleware.eventStreamRouteHandler)
+      )
+      server.get(
+        pgMiddleware.eventStreamRoute,
+        convertHandler(pgMiddleware.eventStreamRouteHandler)
+      )
+    }
+  }
 
   const api: FastifyPluginCallback = (server, _, done) => {
     // Here we parse JWT, and set it in request.auth, which is available for
@@ -172,6 +203,7 @@ const startServer = async () => {
         })
 
         server.register(snapshotRoutes, { prefix: '/snapshot' })
+        server.register(templateRoutes, { prefix: '/template' })
         server.get('/updateRowPolicies', routeUpdateRowPolicies)
         server.get('/get-application-data', routeGetApplicationData)
         server.get('/get-all-prefs', routeGetAllPrefs)
@@ -257,11 +289,7 @@ const startServer = async () => {
     console.log(`\nServer listening at ${address}`)
   })
 
-  // Fastify TO DO:
-  //  - Serve actual bundled React App
-  //  - Authentication endpoint
-  //  - Endpoint for file serving
-  //  - etc...
+  cleanUpFiles() // Runs on schedule as well as startup
 }
 
 startServer()
@@ -270,7 +298,7 @@ function generateAsciiHeader(version: string) {
   // Should look like:
   // -------------------------
   // |                       |
-  // |    CONFORMA v0.2.1    |
+  // |    CONFORMA v1.2.1    |
   // |                       |
   // -------------------------
   const name = `CONFORMA v${version}`

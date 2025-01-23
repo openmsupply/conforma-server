@@ -80,15 +80,15 @@ export const getDistinctObjects = (
 }
 
 // Given an object, returns a new object with all keys removed whose values
-// return false when passed into the 2nd parameter function. Can be use (for
+// return false when passed into the 2nd parameter function. Can be used (for
 // example) to remove keys with null or undefined values (the default)
 // Eg. {one: 1, two: null, three: undefined} => {one: 1}
-type FilterFunction = (x: any) => boolean
+type FilterFunction = (key: string, value: any) => boolean
 export const filterObject = (
   inputObj: BasicObject,
-  filterFunction: FilterFunction = (x) => x != null
+  filterFunction: FilterFunction = (_, value) => value != null
 ) => {
-  const filtered = Object.entries(inputObj).filter(([_, value]) => filterFunction(value))
+  const filtered = Object.entries(inputObj).filter(([key, value]) => filterFunction(key, value))
   return Object.fromEntries(filtered)
 }
 
@@ -111,6 +111,7 @@ export const clearEmptyDirectories = async (directory: string) => {
     fs.statSync(path.join(directory, dir)).isDirectory()
   )
   for (const dir of directories) {
+    await clearEmptyDirectories(path.join(directory, dir))
     const files = await fsProm.readdir(path.join(directory, dir))
     if (files.length === 0) await fsProm.rmdir(path.join(directory, dir))
   }

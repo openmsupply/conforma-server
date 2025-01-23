@@ -1,6 +1,6 @@
 {
   "name": "conforma-server",
-  "version": "1.2.4-2",
+  "version": "1.5.4",
   "main": "server.js",
   "license": "MIT",
   "repository": {
@@ -8,7 +8,7 @@
     "url": "https://github.com/msupply-foundation/conforma-server"
   },
   "engines": {
-    "node": ">=18.0.0 <19.0.0"
+    "node": ">=18.18.2 <19.0.0"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "5.0.2",
@@ -39,6 +39,7 @@
     "markdown-toc": "^1.2.0",
     "node-fetch": "^2.6.1",
     "nodemon": "^2.0.4",
+    "pg-to-ts": "^4.1.1",
     "postgraphile-plugin-nested-mutations": "^1.1.0",
     "readline-sync": "^1.4.10",
     "rimraf": "^3.0.2",
@@ -51,16 +52,12 @@
     "start": "yarn build && cd build && node server.js",
     "build": "./utils/build_all.sh",
     "test": "jest --runInBand",
-    "pg": "exec ./utils/postgraphile_launch.sh",
-    "pg_permissions": "exec ./utils/postgraphile_launch_permissions.sh",
-    "dev_pg": "concurrently --kill-others-on-fail \"yarn dev\"  \"yarn pg\"",
-    "dev_pg_permissions": "concurrently --kill-others-on-fail \"yarn dev\"  \"yarn pg_permissions\"",
     "database_init": "yarn snapshot use",
-    "postdatabase_init": "./database/post_data_insert.sh",
     "build_plugins": "node ./utils/pluginScripts/buildPlugins.js",
     "push_docs": "exec ./utils/push_docs_to_wiki.sh",
     "gui": "cd ./src/modules/expression-evaluator && yarn gui",
     "generate": "graphql-codegen --config codegen.yml",
+    "generate_pg": "yarn pg-to-ts generate -c postgresql://postgres@localhost:5432/tmf_app_manager -o ./src/generated/postgres.ts",
     "postinstall": "node ./utils/pluginScripts/yarnInstallPlugins.js",
     "snapshot": "ts-node ./database/snapshotCLI.ts",
     "dockerise": "cd docker && ./dockerise.sh",
@@ -84,7 +81,6 @@
     "bcrypt": "^5.1.0",
     "carbone": "^3.2.3",
     "comment-json": "^4.1.0",
-    "concurrently": "^5.3.0",
     "deep-equal": "^2.0.5",
     "delay-sync": "^1.0.2",
     "dotenv": "^10.0.0",

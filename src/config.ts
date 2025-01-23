@@ -46,10 +46,7 @@ const Throttle = new EventThrottle()
 const config: Config = {
   pg_database_connection: PostgresConfig,
   version,
-  // In production postgraphile is started with -q and -i /postgraphile/...
-  graphQLendpoint: isProductionBuild
-    ? 'http://localhost:5000/postgraphile/graphql'
-    : 'http://localhost:5000/graphql',
+  graphQLendpoint: 'http://localhost:8080/graphql',
   // 'Folder path from perspective of server.ts/js'
   filesFolder: '../files',
   pluginsFolder: '../plugins',

@@ -1,24 +1,23 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { ExportAndImportOptions } from '../../exportAndImport/types'
+import { ArchiveOption, SnapshotType } from '../../exportAndImport/types'
 import takeSnapshot from '../takeSnapshot'
 
 type Query = {
   name?: string
-  archive?: 'true'
-  optionsName?: string
+  type?: SnapshotType
 }
 
-const routeTakeSnapshot = async (request: FastifyRequest, reply: FastifyReply) => {
-  const isArchive = (request.query as Query).archive === 'true'
-  const snapshotName = (request.query as Query).name
-  const optionsName = isArchive ? 'archive' : (request.query as Query).optionsName
-  const extraOptions = (request.body || {}) as Partial<ExportAndImportOptions>
+const routeTakeSnapshot = async (
+  request: FastifyRequest<{ Querystring: Query; Body?: { archive: ArchiveOption } }>,
+  reply: FastifyReply
+) => {
+  const snapshotType = request.query.type
+  const snapshotName = request.query.name
+  const archive = request?.body?.archive
 
-  reply.send(
-    !isArchive
-      ? await takeSnapshot({ snapshotName, optionsName, extraOptions })
-      : await takeSnapshot({ snapshotName, optionsName, extraOptions, isArchiveSnapshot: true })
-  )
+  if (!snapshotName) return reply.send({ success: false, message: 'error while loading snapshot' })
+
+  reply.send(await takeSnapshot({ snapshotName, snapshotType, archive }))
 }
 
 export default routeTakeSnapshot

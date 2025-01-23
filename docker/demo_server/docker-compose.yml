@@ -1,9 +1,8 @@
-# DO NOT LAUNCH DOCKER-COMPOSE DIRECTLY. PLEASE USE THE `launch.sh` SCRIPT WHICH
+# DO NOT LAUNCH DOCKER-COMPOSE DIRECTLY. PLEASE USE THE `launch.mjs` SCRIPT WHICH
 # WILL ENSURE ALL REQUIRED ENV VARIABLES ARE PRESENT
 
-# Last updated: 11/09/2024
+# Last updated: 21/11/2024
 
-version: '3.9'
 services:
   app:
     image: 'msupplyfoundation/conforma:${TAG}'

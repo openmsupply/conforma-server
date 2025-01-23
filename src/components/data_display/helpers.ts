@@ -200,7 +200,7 @@ const getSortColumn = (
   return undefined
 }
 
-const buildColumnList = (
+export const buildColumnList = (
   dataView: DataView,
   allColumns: string[],
   type: 'TABLE' | 'DETAIL' | 'FILTER' | 'RAW'

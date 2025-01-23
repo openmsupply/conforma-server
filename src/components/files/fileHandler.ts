@@ -73,7 +73,7 @@ export async function saveFiles(data: any, queryParams: HttpQueryParameters) {
       })
 
       // Save file info to database
-      await saveToDB({
+      const { id } = await saveToDB({
         unique_id,
         file,
         file_path,
@@ -83,6 +83,7 @@ export async function saveFiles(data: any, queryParams: HttpQueryParameters) {
       })
 
       filesInfo.push({
+        id,
         filename: file.filename,
         uniqueId: unique_id,
         fileUrl: `/file?uid=${unique_id}`,
@@ -157,7 +158,7 @@ export async function saveToDB({
   mimetype,
 }: any) {
   try {
-    await DBConnect.addFile(
+    const result = await DBConnect.addFile(
       filterObject({
         user_id,
         unique_id,
@@ -175,6 +176,7 @@ export async function saveToDB({
         mimetype: file ? file.mimetype : mimetype,
       }) as FilePayload
     )
+    return result
   } catch (err) {
     throw err
   }

@@ -19,7 +19,7 @@ const ImportCsvController = async (
         .on('data', function (row) {
           lookupTableService.addRow(row)
         })
-        .on('end', async (rowCount: any) => {
+        .on('end', async () => {
           await lookupTableService
             .createTable()
             .catch((error: Error) =>

@@ -1,0 +1,6 @@
+export * from './checkTemplate'
+export * from './commitTemplate'
+export * from './duplicateTemplate'
+export * from './exportTemplate'
+export * from './importTemplate'
+export * from './linkingOperations'

@@ -32,8 +32,6 @@ CREATE INDEX IF NOT EXISTS "i_file_application_response_id_fkey" ON file (applic
 
 CREATE INDEX IF NOT EXISTS "i_file_application_serial_fkey" ON file (application_serial);
 
-CREATE INDEX IF NOT EXISTS "i_file_template_id_fkey" ON file (template_id);
-
 CREATE INDEX IF NOT EXISTS "i_file_user_id_fkey" ON file (user_id);
 
 CREATE INDEX IF NOT EXISTS "i_notification_application_id_fkey" ON notification (application_id);

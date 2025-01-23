@@ -13,8 +13,8 @@ The back-end currently has two server instances which are launched to handle inc
 <!-- TOC -->
 
 - [Contents](#contents)
-- [Postgraphile server API:](#postgraphile-server-api)
 - [Fastify server API](#fastify-server-api)
+  - [Postgraphile (GraphQL) route:](#postgraphile-graphql-route)
   - [Authentication](#authentication)
   - [Public endpoints](#public-endpoints)
   - [Authenticated endpoints](#authenticated-endpoints)
@@ -22,19 +22,20 @@ The back-end currently has two server instances which are launched to handle inc
 
 <!-- /TOC -->
 
-## Postgraphile server API:
-
-`http://localhost:5000/graphql` (in Development environment)  
-`http://localhost:5000/postgraphile/graphql` (in Production environment)
-
-Web-based GUI available at:  
-`http://localhost:5000/graphiql` (development only)
 
 ---
 
 ## Fastify server API
 
 `http://localhost:8080` (In Development environment)
+
+### Postgraphile (GraphQL) route:
+
+`http://localhost:8080/graphql` (In Development environment)
+
+Web-based GUI available at:  
+`http://localhost:8080/graphiql` (development only)
+
 
 ### Authentication
 
@@ -570,6 +571,12 @@ A json array of new policies:
     "CREATE POLICY \"view_pp3pn3tp3\" ON \"application\" FOR SELECT USING (jwt_get_boolean('pp3pn3tp3') = true and template_id = jwt_get_bigint('pp3pn3tp3_templateId')) "
 ]
 ```
+
+#### Template Import/Export
+
+`/template`
+
+A range of endpoints for importing and exporting templates. See [Template Import/Export](./Template-Import-Export.md) for the details.
 
 #### Run Action
 

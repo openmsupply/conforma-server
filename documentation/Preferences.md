@@ -28,6 +28,7 @@ The available properties are as follows (almost  are optional, as the system has
 - **`fileCleanupSchedule`**: The schedule for cleaning up (deleting) and missing files, orphan file database records, and files marked as "to be deleted" (e.g Preview docs), as per the node-schedule syntax above. (Default: daily at 1:05am UTC)
 - **`backupSchedule`**: How often system backups should run, as per the node-schedule syntax above. (Default: daily at 1:15am UTC)
 - **`backupFilePrefix`**: System backups are saved with the name format `backupFilePrefix_date_time.zip`, e.g. `conforma_backup_2023-04-04_01-00-00.zip`. (Default: "conforma_backup")
+- **`skipBackup`**: If `true`, don't run scheduled backups at all
 - **`maxBackupDurationDays`**: Backups are kept for this many days, after which they're deleted next time the backup schedule runs. The default is nothing -- all backups will be kept.
 - **`testingEmail`**: During development and on a testing server, we don't want emails being sent to real people. If this property is set, and the site is not running on the designated host (as defined in `siteHost` below), then all emails will be send to this address instead. (If no `testingEmail` is specified, no emails will be sent at all)
 - **`emailTestMode`**: Can be set to `false` to override the `testingEmail` behaviour -- i.e. emails will be sent to live recipients regardless of which host it's running on. (Default: `true`)

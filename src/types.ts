@@ -130,6 +130,7 @@ export interface BaseApplicationData {
   userId: number
   orgId: number | null
   outcome: ApplicationOutcome
+  urlProperties: Record<string, string | number | boolean>
 }
 
 export interface ActionApplicationData extends BaseApplicationData {
@@ -297,6 +298,7 @@ export interface ServerPreferences {
   fileCleanupSchedule?: number[] | ScheduleObject
   backupSchedule?: number[] | ScheduleObject
   backupFilePrefix?: string
+  skipBackup?: boolean
   maxBackupDurationDays?: number
   archiveSchedule?: number[] | ScheduleObject
   archiveFileAgeMinimum?: number

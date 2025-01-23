@@ -5,6 +5,7 @@ import { setDataTypes, toCamelCase, toSnakeCase } from '../utils'
 import { LookupTableHeadersValidator, LookupTableNameValidator } from '../utils/validations'
 import { ValidationErrors } from '../utils/validations/error'
 import { ILookupTableNameValidator, IValidator } from '../utils/validations/types'
+import { getHash, hashLookupTable } from '../../components/template-import-export'
 
 type LookupTableServiceProps = {
   tableId?: number
@@ -20,6 +21,7 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
   let dbFieldMap: any = []
   let dataViewCode = props.dataViewCode
   let structure: LookupTableStructureFull
+  let rowHashes: string[] = []
 
   // Initialisation
   const lookupTableModel = LookupTableModel()
@@ -35,6 +37,7 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
   const getAllRowsForTable = async () => await lookupTableModel.getAllRowsForTable(structure)
 
   let tableName = ''
+
   const createTable = async () => {
     tableName = toSnakeCase(singular(name))
 
@@ -83,6 +86,7 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
 
       await createUpdateRows()
       await createOrUpdateDataView()
+      await hashLookupTable(tableId)
 
       return buildSuccessMessage(results)
     } catch (err) {
@@ -109,6 +113,7 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
       await createNewColumns()
       await createUpdateRows()
       await createOrUpdateDataView()
+      await hashLookupTable(tableId)
 
       return buildSuccessMessage(results)
     } catch (err) {
@@ -240,6 +245,7 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
 
   const createUpdateRows = async () => {
     for (const row of rows) {
+      rowHashes.push(getHash(row))
       await lookupTableModel.createOrUpdateRow(tableName, row)
     }
     await lookupTableModel.deleteRemovedRows(tableName, rows)

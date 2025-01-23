@@ -25,24 +25,12 @@ export type DatabaseTable = {
 export type DatabaseTables = DatabaseTable[]
 
 export type ExportAndImportOptions = {
-  filters: {
-    [tableName: string]: object
-  }
-  includeTables: string[]
   excludeTables: string[]
   shouldReInitialise: boolean
-  usePgDump?: boolean
   skipZip?: boolean
-  insertScriptsLocale: string
-  includeInsertScripts: string[]
-  excludeInsertScripts: string[]
-  // tablesToUpdateOnInsertFail is deprecated, but values are still required (for existing snapshots), they key is change to skipTableOnInsertFail in useSnapshot
-  tablesToUpdateOnInsertFail: string[]
-  skipTableOnInsertFail: string[]
   includeLocalisation?: boolean
   includePrefs?: boolean
   resetFiles: boolean
-  templates?: { resetVersion?: boolean; newCode?: string; checkVersionOnImport?: boolean }
   archive?: ArchiveOption
 }
 
@@ -53,24 +41,12 @@ export interface SnapshotInfo {
   archive?: ArchiveInfo
 }
 
-export type ObjectRecord = { [columnName: string]: any }
-export type ObjectRecords = {
-  [tableName: string]: ObjectRecord[]
-}
-
-export type InsertedRecords = {
-  [tableName: string]: {
-    old: ObjectRecord
-    new: ObjectRecord
-  }[]
-}
+export type SnapshotType = 'normal' | 'archive' | 'backup'
 
 export type SnapshotOperation = (props: {
-  snapshotName?: string
-  optionsName?: string
-  options?: ExportAndImportOptions
-  extraOptions?: Partial<ExportAndImportOptions>
-  isArchiveSnapshot?: boolean
+  snapshotName: string
+  snapshotType?: SnapshotType
+  archive?: ArchiveOption
 }) => Promise<{ success: boolean; message: string; error?: string; snapshot?: string }>
 
 export type ArchiveSnapshotOperation = (props: {

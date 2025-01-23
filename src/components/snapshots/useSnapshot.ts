@@ -113,6 +113,7 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
       await fsx.copy(path.join(snapshotFolder, 'preferences.json'), PREFERENCES_FILE)
     } catch (e) {
       console.log("Couldn't import preferences")
+      console.log((e as Error).message)
     }
 
     // Import localisation
@@ -123,6 +124,7 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
       await fsx.copy(path.join(snapshotFolder, 'localisation'), LOCALISATION_FOLDER)
     } catch (e) {
       console.log("Couldn't import localisations")
+      console.log((e as Error).message)
     }
 
     // Pause to allow postgraphile "watch" to detect changed schema

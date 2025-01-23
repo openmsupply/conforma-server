@@ -1172,6 +1172,14 @@ const migrateData = async () => {
 
     console.log(' - Regenerating all reviewer actions (This may take a while)')
 
+    // Note: this is actually a v1.5.0 migration, but is needed in order to run
+    // the functionsScript, which now references this new field
+    console.log(' - Adding url_properties to application table')
+    await DB.changeSchema(`
+      ALTER TABLE public.application   
+        ADD COLUMN IF NOT EXISTS url_properties jsonb;
+    `)
+
     await DB.changeSchema(functionsScript)
 
     try {

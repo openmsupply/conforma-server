@@ -37,6 +37,8 @@ const takeSnapshot: SnapshotOperation = async ({
   snapshotType = 'normal',
   archive,
 }) => {
+  const startTime = Date.now()
+
   // Ensure relevant folders exist
   createDefaultDataFolders()
 
@@ -47,7 +49,7 @@ const takeSnapshot: SnapshotOperation = async ({
   const isArchiveSnapshot = snapshotType === 'archive'
 
   try {
-    console.log(`Taking ${isArchiveSnapshot ? 'Archive ' : ''}snapshot, name: ${snapshotName}`)
+    console.log(`Taking ${isArchiveSnapshot ? 'Archive ' : ''}snapshot: ${snapshotName}`)
 
     const tempFolder = path.join(SNAPSHOT_FOLDER, TEMP_SNAPSHOT_FOLDER_NAME)
     const tempArchiveFolder = path.join(SNAPSHOT_FOLDER, TEMP_ARCHIVE_FOLDER_NAME)
@@ -56,16 +58,18 @@ const takeSnapshot: SnapshotOperation = async ({
     // Write snapshot/database to folder
     if (!isArchiveSnapshot) {
       console.log('Dumping database...')
+      const databaseStartTime = Date.now()
       execSync(`pg_dump -U postgres tmf_app_manager --format=custom -f ${tempFolder}/database.dump`)
       // This plain-text .sql script is NOT used for re-import, but could be
       // useful for debugging when dealing with troublesome snapshots
       // execSync(
       //   `pg_dump -U postgres tmf_app_manager --format=plain --inserts --clean --if-exists -f ${tempFolder}/database.sql`
       // )
-      console.log('Dumping database...done')
+      console.log(`Dumping database...done in ${getTimeString(databaseStartTime)}`)
 
       // Copy ALL files
       await copyFiles(tempFolder)
+
       archiveInfo = await copyArchiveFiles(tempFolder, archive)
     } else {
       // Archive snapshot
@@ -120,6 +124,7 @@ const takeSnapshot: SnapshotOperation = async ({
     }
 
     console.log('Taking snapshot...complete!')
+    console.log('Total time:', getTimeString(startTime))
 
     return { success: true, message: `created snapshot ${snapshotName}`, snapshot: newFolderName }
   } catch (e) {
@@ -133,13 +138,19 @@ export const zipSnapshot = async (
   destination = SNAPSHOT_FOLDER
 ) => {
   console.log('Zipping snapshot...')
+  const zipStartTime = Date.now()
   const output = await fs.createWriteStream(path.join(destination, `${snapshotName}.zip`))
   const archive = archiver('zip', { zlib: { level: 9 } })
 
   await archive.pipe(output)
   await archive.directory(snapshotFolder, false)
   await archive.finalize()
-  console.log('Zipping snapshot...done')
+  console.log(`Zipping snapshot...done in ${getTimeString(zipStartTime)}`)
+}
+
+export const getTimeString = (startTime: number) => {
+  const timeInMs = Date.now() - startTime
+  return `${Math.round(timeInMs / 100) / 10} seconds`
 }
 
 const getSnapshotInfo = (archiveInfo: ArchiveInfo = null) => {
@@ -154,9 +165,10 @@ const getSnapshotInfo = (archiveInfo: ArchiveInfo = null) => {
 }
 
 const copyFiles = async (newSnapshotFolder: string) => {
-  const archiveRegex = new RegExp(`.+${config.filesFolder}\/${ARCHIVE_SUBFOLDER_NAME}.*`)
-
   console.log('Exporting files...')
+  const fileCopyStartTime = Date.now()
+
+  const archiveRegex = new RegExp(`.+${config.filesFolder}\/${ARCHIVE_SUBFOLDER_NAME}.*`)
 
   // Copy files but not archive
   await fsx.copy(FILES_FOLDER, path.join(newSnapshotFolder, 'files'), {
@@ -167,7 +179,7 @@ const copyFiles = async (newSnapshotFolder: string) => {
     },
   })
 
-  console.log('Exporting files...done')
+  console.log(`Exporting files...done in ${getTimeString(fileCopyStartTime)}`)
 }
 
 const copyArchiveFiles = async (
@@ -175,6 +187,7 @@ const copyArchiveFiles = async (
   archiveOption: ArchiveOption = 'full'
 ): Promise<ArchiveInfo> => {
   console.log('Exporting archive data & files...')
+  const archiveCopyStartTime = Date.now()
 
   // Figure out which archive folders we want
   let archiveFolders: string[]
@@ -187,6 +200,7 @@ const copyArchiveFiles = async (
 
   // Copy the archive folders
   for (const folder of archiveFolders) {
+    console.log('Copying archive folder:', folder)
     await fsx.copy(
       path.join(ARCHIVE_FOLDER, folder),
       path.join(newSnapshotFolder, 'files', ARCHIVE_SUBFOLDER_NAME, folder)
@@ -196,7 +210,7 @@ const copyArchiveFiles = async (
     if (info.timestamp > archiveTo) archiveTo = info.timestamp
   }
 
-  console.log('Exporting archive data & files...done')
+  console.log(`Exporting archive data & files...done in ${getTimeString(archiveCopyStartTime)}`)
 
   // And copy the archive meta-data
   try {

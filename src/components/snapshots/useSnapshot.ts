@@ -27,13 +27,16 @@ import {
 import { findArchiveSources } from '../files/helpers'
 import { errorMessage } from '../utilityFunctions'
 import { cleanupDataTables } from '../../lookup-table/utils/cleanupDataTables'
+import { getTimeString } from './takeSnapshot'
 
 const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
+  const startTime = Date.now()
+
   // Ensure relevant folders exist
   createDefaultDataFolders()
 
   try {
-    console.log(`Using snapshot: ${snapshotName}`)
+    console.log(`Restoring snapshot: ${snapshotName}`)
 
     const snapshotFolder = path.join(SNAPSHOT_FOLDER, snapshotName)
 
@@ -73,27 +76,34 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
 
     // Check that we can find all the archives needed:
     console.log('Collecting archives...')
+    const archiveCollectStartTime = Date.now()
     await collectArchives(snapshotFolder)
-    console.log('Collecting archives...done')
+    console.log(`Collecting archives...done in ${getTimeString(archiveCollectStartTime)}`)
 
     // Reset existing files folder
     execSync(`rm -rf ${FILES_FOLDER}/*`)
 
     console.log('Restoring database...')
+    const databaseStartTime = Date.now()
 
     // Safer to drop and recreate whole schema, as there can be errors when
     // trying to drop individual objects using --clean, especially if the
     // incoming database differs from the current database, schema-wise
-    execSync(`psql -U postgres -d tmf_app_manager -c 'DROP schema public CASCADE;'`)
+    execSync(
+      `psql -U postgres -d tmf_app_manager -c 'DROP schema public CASCADE;' > /dev/null 2>&1`
+    )
     execSync(`psql -U postgres -d tmf_app_manager -c 'CREATE schema public;'`)
     execSync(
       `pg_restore -U postgres --clean --if-exists --dbname tmf_app_manager ${snapshotFolder}/database.dump`
     )
 
-    console.log('Restoring database...done')
+    console.log(`Restoring database...done in ${getTimeString(databaseStartTime)}`)
 
     // Copy files
+    console.log('Importing files...')
+    const fileCopyStartTime = Date.now()
     await copyFiles(snapshotFolder)
+    console.log(`Importing files...done in ${getTimeString(fileCopyStartTime)}`)
 
     // Import preferences
     try {
@@ -126,7 +136,7 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
     await updateRowPolicies()
 
     // To ensure generic thumbnails are not wiped out, even if server doesn't restart
-    // createDefaultDataFolders()
+    createDefaultDataFolders()
 
     // Store snapshot name in database
     const text = `INSERT INTO system_info (name, value)
@@ -141,6 +151,7 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
     refreshConfig(config)
 
     console.log('...Snapshot load complete!')
+    console.log('Total time:', getTimeString(startTime))
 
     return { success: true, message: `snapshot loaded ${snapshotName}` }
   } catch (e) {
@@ -149,8 +160,6 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
 }
 
 const copyFiles = async (snapshotFolder: string) => {
-  console.log('Importing files...')
-
   // Copy files but not archive
   const archiveRegex = new RegExp(`.+\/${ARCHIVE_SUBFOLDER_NAME}.*`)
   await fsx.copy(path.join(snapshotFolder, 'files'), FILES_FOLDER, {
@@ -161,7 +170,6 @@ const copyFiles = async (snapshotFolder: string) => {
   })
   // Restore the temp archives folder
   await fsx.move(ARCHIVE_TEMP_FOLDER, path.join(FILES_FOLDER, ARCHIVE_SUBFOLDER_NAME))
-  console.log('Importing files...done')
 
   // Restore "archive.json" from snapshot
   try {

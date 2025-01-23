@@ -23,6 +23,7 @@ import {
   ARCHIVE_SUBFOLDER_NAME,
   LOCALISATION_FOLDER,
   ARCHIVE_FOLDER,
+  ARCHIVE_TEMP_FOLDER_NAME,
 } from '../../constants'
 import { findArchiveSources } from '../files/helpers'
 import { errorMessage } from '../utilityFunctions'
@@ -80,8 +81,8 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
     await collectArchives(snapshotFolder)
     console.log(`Collecting archives...done in ${getTimeString(archiveCollectStartTime)}`)
 
-    // Reset existing files folder
-    execSync(`rm -rf ${FILES_FOLDER}/*`)
+    // Reset existing files folder (but keep temp archives)
+    await removeFiles()
 
     console.log('Restoring database...')
     const databaseStartTime = Date.now()
@@ -167,9 +168,13 @@ const copyFiles = async (snapshotFolder: string) => {
       if (src === FILES_FOLDER) return true
       return !archiveRegex.test(src)
     },
+    overwrite: true,
   })
   // Restore the temp archives folder
-  await fsx.move(ARCHIVE_TEMP_FOLDER, path.join(FILES_FOLDER, ARCHIVE_SUBFOLDER_NAME))
+  await fsx.emptyDir(path.join(FILES_FOLDER, ARCHIVE_SUBFOLDER_NAME))
+  await fsx.move(ARCHIVE_TEMP_FOLDER, path.join(FILES_FOLDER, ARCHIVE_SUBFOLDER_NAME), {
+    overwrite: true,
+  })
 
   // Restore "archive.json" from snapshot
   try {
@@ -179,6 +184,15 @@ const copyFiles = async (snapshotFolder: string) => {
     )
   } catch {
     console.log('No archive.json in snapshot')
+  }
+}
+
+// Removes the contents of the "files" folder, *except* for the Temp Archives
+const removeFiles = async () => {
+  const contents = await fsx.readdir(FILES_FOLDER)
+  for (const item of contents) {
+    if (item === ARCHIVE_TEMP_FOLDER_NAME) continue
+    await fsx.remove(path.join(FILES_FOLDER, item))
   }
 }
 

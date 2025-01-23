@@ -8,7 +8,7 @@ export const DEFAULT_OPTIONS_NAME = 'default'
 export const SNAPSHOT_SUBFOLDER = '_snapshots'
 export const SNAPSHOT_FILE_NAME = 'snapshot'
 export const ARCHIVE_SUBFOLDER_NAME = '_ARCHIVE'
-export const ARCHIVE_TEMP_FOLDER_NAME = 'TEMP_Archives'
+export const ARCHIVE_TEMP_FOLDER_NAME = '__TEMP_Archives'
 export const SNAPSHOT_ARCHIVES_FOLDER_NAME = '_archives'
 export const OPTIONS_FILE_NAME = 'options'
 export const FILES_TEMP_FOLDER_NAME = '__TEMP_Files'
@@ -29,7 +29,11 @@ export const SNAPSHOT_ARCHIVE_FOLDER = path.join(SNAPSHOT_FOLDER, SNAPSHOT_ARCHI
 export const BACKUPS_FOLDER = path.join(getAppEntryPointDir(), config.backupsFolder)
 export const FILES_FOLDER = path.join(getAppEntryPointDir(), config.filesFolder)
 export const ARCHIVE_FOLDER = path.join(FILES_FOLDER, ARCHIVE_SUBFOLDER_NAME)
-export const ARCHIVE_TEMP_FOLDER = path.join(getAppEntryPointDir(), ARCHIVE_TEMP_FOLDER_NAME)
+// We want to keep ARCHIVE_TEMP_FOLDER inside FILES_FOLDER so that, when
+// dockerised, the archives are "collected" within the same volume. This
+// substantially speeds up restoring a large snapshot when most of the required
+// archives are already in the current system.
+export const ARCHIVE_TEMP_FOLDER = path.join(FILES_FOLDER, ARCHIVE_TEMP_FOLDER_NAME)
 export const FILES_TEMP_FOLDER = path.join(FILES_FOLDER, FILES_TEMP_FOLDER_NAME)
 export const IMAGES_FOLDER = path.join(getAppEntryPointDir(), config.imagesFolder)
 export const LOCALISATION_FOLDER = path.join(getAppEntryPointDir(), config.localisationsFolder)

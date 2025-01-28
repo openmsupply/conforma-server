@@ -41,6 +41,7 @@ export const routeSetMaintenanceMode = (
 
 export const routeServerStatusWebsocket = (socket: WebSocket, server: FastifyInstance) => {
   console.log(`New client connected, ${server.websocketServer.clients.size} current connections`)
+  socket.send(JSON.stringify({ version: config.version }))
   if (config.maintenanceMode)
     socket.send(
       JSON.stringify({

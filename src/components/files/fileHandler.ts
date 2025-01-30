@@ -32,9 +32,10 @@ export async function getFilePath(uid: string, thumbnail = false) {
   const isGenericThumbnail =
     thumbnail && fileData.thumbnail_path.startsWith(config.genericThumbnailsFolderName)
 
-  const filePath = percentEncodeFilePath(path.join(fileData.archive_path ?? '', fileData.file_path))
-  const thumbnailPath = percentEncodeFilePath(
-    path.join(!isGenericThumbnail ? fileData.archive_path ?? '' : '', fileData.thumbnail_path)
+  const filePath = path.join(fileData.archive_path ?? '', fileData.file_path)
+  const thumbnailPath = path.join(
+    !isGenericThumbnail ? fileData.archive_path ?? '' : '',
+    fileData.thumbnail_path
   )
   return { filePath, thumbnailPath, originalFilename: fileData.original_filename }
 }
@@ -181,34 +182,3 @@ export async function saveToDB({
     throw err
   }
 }
-
-// If any of these characters are in a filename, they should be replaced with
-// percent-encoded chars in the "filePath" parameter to Fastify `sendFile`
-// method.
-// Reference: https://developer.mozilla.org/en-US/docs/Glossary/Percent-encoding
-const encodedCharMap = {
-  ':': '%3A',
-  // '/': '%2F', -- don't want slash in paths at all, asking for trouble!
-  '?': '%3F',
-  '#': '%23',
-  '[': '%5B',
-  ']': '%5D',
-  '@': '%40',
-  '!': '%21',
-  $: '%24',
-  '&': '%26',
-  "'": '%27',
-  '(': '%28',
-  ')': '%29',
-  '*': '%2A',
-  '+': '%2B',
-  ',': '%2C',
-  ';': '%3B',
-  '=': '%3D',
-  '%': '%25',
-  // ' ': '+',
-} as Record<string, string>
-
-const illegalCharacterDetect = /[:?#\[\]@!$&'()*+,;=%]/g
-const percentEncodeFilePath = (path: string) =>
-  path.replace(illegalCharacterDetect, (m) => encodedCharMap[m])

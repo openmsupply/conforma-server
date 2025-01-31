@@ -1356,8 +1356,8 @@ const migrateData = async () => {
     `)
   }
 
-  if (databaseVersionLessThan('1.3.0')) {
-    console.log('Migrating to v1.3.0...')
+  if (databaseVersionLessThan('1.6.0')) {
+    console.log('Migrating to v1.6.0...')
 
     console.log(' - Adding Evaluator Fragments table')
 

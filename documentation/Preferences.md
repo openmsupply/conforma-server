@@ -49,8 +49,24 @@ If set to `0`, auto logout will be disabled.
 - **`defaultLanguageCode`**: If no language has been selected by the user yet, the system will default to this language. Must correspond to the `code` value specified in one of the active languages (in `localisation`) (No default, as we can't guarantee that any particular language will be active)
 - **`brandLogoFileId`**: To override the default Conforma logo on the Login page, specify the database fileId of the image file.
 - **`brandLogoOnDarkFileId`**: The same as above, but for the logo shown on the main header of the app.
+- **`footerLogoId`**: fileId of image to replace the default Footer logo. **This should always be a Conforma logo -- only replace it for the colour scheme**
+- 
+- **`footerText`**: Custom text can be displayed in the app Footer. It will be centered within the footer. Markdown supported.
 - **`defaultListFilters`**: In the Application List, these filter options will be initially enabled (though with no values selected). (Default: `['applicantDeadline', 'reviewers', 'reviewerAction', 'stage' ]`)
-- **`style`**: A limited range of CSS overrides. Currently only `headerBgColor` is supported (which changes the color of the app's main header)
+- **`style`**: The web apps CSS styling can be over-ridden by targeting classes or ids here. Provide an object with the targets as keys and CSS definitions as the values. For example, to over-ride 3 particular ids:  
+  ```
+  {
+  "#user-area": {
+    "background-color": "#9c85c4"
+  },
+  "#footer": {
+    "background-color": "black"
+    },
+    "#footer p": {
+      "color": "#e1e1e1"
+    }
+  }
+  ```
 - **`siteHost`**: The canonical host domain that the live version of the site will be served from. This is how the system can determine if it is a "live" or "testing" site -- by comparing this value against the current url. If not specified, the system will be treated like a "live" system regardless of where it's actually running.
 - **`googleAnalyticsId`**: The web app has support for Google Analytics tracking. If you want to use it, enter your Analytics ID here. Note: this requires `siteHost` to be set correctly -- analytics will only work when the browser URL matches this value (so we don't enable tracking on test or dev systems).
 - **`showDocumentModal`**: If `true`, will display documents (when clicked to view) in a modal overlay rather than opening in a new tab. Will fallback to global system preference.
@@ -61,3 +77,19 @@ If set to `0`, auto logout will be disabled.
     link: "https://link.to.visit"
   }
   ```
+- **`userRegistrationCode`**: By default, the template code of the user registration form is assumed to be "UserRegistration". This can be over-ridden here.
+- **`publicUrlMap`**: You may wish to provide more publicly accessible templates than just "UserRegistration" and "passwordReset", which are accessed at the urls `/register` and `/reset-password` respectively. Additional templates can be accessed at `/application/new?type=<yourTemplateCode>`, but it could be handy to offer simple root urls (e.g. `/help`, `/apply`). Pass in an object mapping the url to either:
+  - the templateCode
+  - an object with both `code` and `urlQuery` parameters (which will be passed through to the subsequent application), e.g.
+```
+{
+  user-reg: "UserRegistration",
+  test: {
+    code: "demoRegistration",
+    urlQuery: {
+      dataFile: "accreditation.sqlite",
+      selectVersion: true
+    }
+  }
+}
+```

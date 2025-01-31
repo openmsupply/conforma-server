@@ -1,4 +1,4 @@
-import { FigTreeEvaluator, SQLNodePostgres } from 'fig-tree-evaluator'
+import { FetchClient, FigTreeEvaluator, SQLNodePostgres } from 'fig-tree-evaluator'
 import fetch from 'node-fetch'
 import functions from './functions'
 import { getAdminJWT } from '../permissions/loginHelpers'
@@ -9,7 +9,7 @@ import config from '../../config'
 const databaseConnection = new Client(PostgresConfig)
 
 const FigTree = new FigTreeEvaluator({
-  httpClient: fetch,
+  httpClient: FetchClient(fetch),
   sqlConnection: SQLNodePostgres(databaseConnection),
   graphQLConnection: { endpoint: config.graphQLendpoint },
   maxCacheSize: 100,

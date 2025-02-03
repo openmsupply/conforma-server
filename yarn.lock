@@ -4068,10 +4068,10 @@ fd-slicer@~1.1.0:
   dependencies:
     pend "~1.2.0"
 
-fig-tree-evaluator@^2.18.2:
-  version "2.18.2"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.18.2.tgz#d7711408dc52282f941a14f8bdd60a7575df1621"
-  integrity sha512-Pz0NyoA7dYaakpBp4FF8vEjoAoumyX060MV6L0L55EuHnkHeqvkBXD0ujG3QpsY1QZhV0DBE1F6qlraLKtFaIQ==
+fig-tree-evaluator@^2.19.1:
+  version "2.19.1"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.19.1.tgz#a9d5857aa8b0f5f8cb0f19d4b54d5c6b67cd0da2"
+  integrity sha512-9+pa5nks7ojJD7FdYZwQ6+jxzwH5jrBdZT+FeOHYjihJ4B55vFPt9ddhD4t4glIthGKA6p+fQdkYsfxfsOCUjQ==
   dependencies:
     dequal "^2.0.3"
     object-property-extractor "^1.0.13"

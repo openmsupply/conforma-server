@@ -86,7 +86,7 @@
     "dotenv": "^10.0.0",
     "fast-csv": "^4.3.6",
     "fastify": "^4.28.1",
-    "fig-tree-evaluator": "^2.18.2",
+    "fig-tree-evaluator": "^2.19.1",
     "fs-extra": "^11.1.1",
     "json-sql-builder2": "^1.0.24",
     "jsonwebtoken": "^8.5.1",

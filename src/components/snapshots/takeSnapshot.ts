@@ -20,6 +20,7 @@ import {
   GENERIC_THUMBNAILS_FOLDER,
   ARCHIVE_FOLDER,
   SNAPSHOT_ARCHIVES_FOLDER_NAME,
+  TEST_SCRIPT_FOLDER,
 } from '../../constants'
 import DBConnect from '../../../src/components/database/databaseConnect'
 import config from '../../config'
@@ -105,6 +106,13 @@ const takeSnapshot: SnapshotOperation = async ({
     )
 
     const isBackup = snapshotType === 'backup'
+
+    // Add a testing script file if one exists for this snapshotName
+    try {
+      execSync(`cp '${TEST_SCRIPT_FOLDER}/${snapshotName}.json' '${fullFolderPath}/tests.json'`)
+    } catch {
+      console.log('No test script...')
+    }
 
     if (!isBackup) await zipSnapshot(sourceFolder, newFolderName)
 

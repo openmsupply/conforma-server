@@ -14,6 +14,7 @@ import {
   GENERIC_THUMBNAILS_SOURCE_FOLDER,
   DATABASE_FOLDER,
   BASE_SNAPSHOT_NAME,
+  TEST_SCRIPT_FOLDER,
   SNAPSHOT_ARCHIVE_FOLDER,
 } from '../../constants'
 import fs from 'fs'
@@ -34,6 +35,12 @@ export function createDefaultDataFolders() {
       zipSnapshot(path.join(SNAPSHOT_FOLDER, BASE_SNAPSHOT_NAME), BASE_SNAPSHOT_NAME)
   } catch {
     console.log('\nProblem creating SNAPSHOTS folder\n')
+  }
+
+  try {
+    makeFolder(TEST_SCRIPT_FOLDER, 'Creating Test Script folder')
+  } catch {
+    console.log('\nProblem creating Test Scripts folder\n')
   }
 
   try {

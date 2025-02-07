@@ -369,6 +369,7 @@ interface ConfigBase {
   preferencesFileName: string
   backupsFolder: string
   genericThumbnailsFolderName: string
+  testScriptFolder: string
   defaultUnderMaintenanceSite: string
   nodeModulesFolder: string
   jwtSecret: string

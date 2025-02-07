@@ -47,7 +47,7 @@ export const getApplicationBasics = async (
   return { appId, appSerial: serial as string }
 }
 
-const triggerMap: { [key: string]: Trigger | 'RESET' } = {
+export const triggerMap: { [key: string]: Trigger | 'RESET' } = {
   reset: 'RESET',
   test: Trigger.DevTest,
   devtest: Trigger.DevTest,

@@ -65,6 +65,7 @@ const config: Config = {
   preferencesFileName,
   backupsFolder: '../backups',
   genericThumbnailsFolderName: '_generic_thumbnails',
+  testScriptFolder: '../snapshot_test_scripts',
   defaultUnderMaintenanceSite: 'https://msupply.foundation/projects/conforma',
   // In production postgraphile is started with -q and -i /postgraphile/...
   nodeModulesFolder:

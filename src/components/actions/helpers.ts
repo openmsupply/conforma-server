@@ -1,8 +1,8 @@
 import { merge } from 'lodash'
 import { ActionInTemplate } from '../../types'
-import evaluateExpression from '@openmsupply/expression-evaluator'
-import { BasicObject, IParameters } from '@openmsupply/expression-evaluator/lib/types'
-import DBConnect from '../databaseConnect'
+import evaluateExpression, { BasicObject, IParameters } from '../../modules/expression-evaluator'
+import DBConnect from '../database/databaseConnect'
+import { Trigger } from '../../generated/graphql'
 
 export async function evaluateParameters(
   parameterQueries: BasicObject,
@@ -42,13 +42,15 @@ export const swapOutAliasedAction = async (templateId: number, action: ActionInT
   // override, the "shouldOverrideCondition" parameter should be set to "true"
   if (condition !== true || shouldOverrideCondition) aliasedAction.condition = condition
 
+  // All docs generated as Previews should be never be kept, but we don't want
+  // to have to remember to add these parameters to every preview doc alias
+  if (aliasedAction.code === 'generateDoc' && action.trigger === Trigger.OnPreview) {
+    overrideParams.toBeDeleted = true
+    overrideParams.isOutputDoc = false
+  }
+
   // Override parameters
-  aliasedAction.parameter_queries = merge(
-    aliasedAction.parameter_queries,
-    // All docs generated through here should be preview docs/non-output
-    { toBeDeleted: true, isOutputDoc: false },
-    overrideParams
-  )
+  aliasedAction.parameter_queries = merge(aliasedAction.parameter_queries, overrideParams)
 
   return aliasedAction
 }

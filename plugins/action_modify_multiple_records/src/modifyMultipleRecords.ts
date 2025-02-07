@@ -54,7 +54,7 @@ const modifyMultipleRecords: ActionPluginType = async ({
 }
 
 // This allows us to remap the property names of the incoming objects to those
-// required by the desination data table. For a single record, we can already
+// required by the destination data table. For a single record, we can already
 // map individual fields, but we can't access individual items in an array of
 // records.
 const constructMappedRecords = (

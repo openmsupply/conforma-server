@@ -1,4 +1,4 @@
-import databaseConnect from '../databaseConnect'
+import databaseConnect from '../database/databaseConnect'
 import config from '../../config'
 import { verify, sign } from 'jsonwebtoken'
 import { promisify } from 'util'

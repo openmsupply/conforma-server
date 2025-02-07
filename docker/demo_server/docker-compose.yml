@@ -1,4 +1,8 @@
-version: '3.9'
+# DO NOT LAUNCH DOCKER-COMPOSE DIRECTLY. PLEASE USE THE `launch.mjs` SCRIPT WHICH
+# WILL ENSURE ALL REQUIRED ENV VARIABLES ARE PRESENT
+
+# Last updated: 21/11/2024
+
 services:
   app:
     image: 'msupplyfoundation/conforma:${TAG}'
@@ -13,25 +17,35 @@ services:
       # passwords override will be ignored if <30 chars
       # REMOVE THIS LINE ON LIVE SERVERS!
       USER_PASSWORD_OVERRIDE: '${USER_PASSWORD_OVERRIDE:-"ignore"}'
+    restart: always
     volumes:
-      - postgres:/var/lib/postgresql/12/main/
+      - postgres:/var/lib/postgresql/16/main/
       - snapshots:/usr/src/conforma-server/build/database/_snapshots
       - files:/usr/src/conforma-server/build/files
       - localisation:/usr/src/conforma-server/build/localisation
       - preferences:/usr/src/conforma-server/build/preferences
       - backups:/usr/src/conforma-server/build/backups
       - logs:/var/log/conforma
+      - file_share:/usr/src/conforma-server/file_share
     tty: true
   grafana:
     image: 'grafana/grafana'
+    env_file:
+      - ${ENV_FILE}
     ports:
       - '${PORT_DASH}:3000'
+    restart: always
     volumes:
       - grafana:/var/lib/grafana
 
 volumes:
   postgres:
   snapshots:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${SNAPSHOTS_FOLDER}
+      o: bind
   files:
   localisation:
   preferences:
@@ -40,6 +54,12 @@ volumes:
     driver_opts:
       type: none
       device: ${BACKUPS_FOLDER}
+      o: bind
+  file_share:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${SHARE_FOLDER:-/home/ubuntu/demo_server/file_share/}
       o: bind
   logs:
   grafana:

@@ -55,7 +55,7 @@ const trimResponses: ActionPluginType = async ({ parameters, applicationData, DB
       if (
         (previousResponse !== null && isEqual(latestResponse.value, previousResponse?.value)) ||
         // Application Responses
-        (latestResponse.value === null && latestResponse.is_reviewable !== Reviewability.Always) ||
+        (latestResponse.value === null && latestResponse.reviewability !== Reviewability.Always) ||
         // Review responses
         latestResponse.value?.decision === null
       )

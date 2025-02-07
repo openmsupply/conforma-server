@@ -3,7 +3,30 @@
     "thumbnailMaxWidth": 300,
     "thumbnailMaxHeight": 300,
     "hoursSchedule": [
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
     ],
     "SMTPConfig": {
       "host": "server.msupply.foundation",
@@ -11,11 +34,18 @@
       "secure": true,
       "user": "irims-dev@sussol.net",
       "defaultFromName": "Conforma",
-      "defaultFromEmail": "no-reply@msupply.foundation"
+      "defaultFromEmail": "no-reply@msupply.foundation",
+      "password": "env.SMTP_PASSWORD"
     }
   },
   "web": {
-    "paginationPresets": [2, 5, 10, 20, 50],
+    "paginationPresets": [
+      2,
+      5,
+      10,
+      20,
+      50
+    ],
     "defaultLanguageCode": "en_nz"
   }
 }

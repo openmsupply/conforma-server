@@ -1,10 +1,12 @@
 import path from 'path'
-import DBConnect from '../../src/components/databaseConnect'
+import DBConnect from '../../src/components/database/databaseConnect'
 import { getTemplateVersionId } from '../../src/components/exportAndImport/helpers'
 import { FILES_FOLDER } from '../../src/constants'
 import fs from 'fs/promises'
 import { errorMessage } from '../../src/components/utilityFunctions'
 import config from '../../src/config'
+import { customAlphabet, nanoid } from 'nanoid'
+import { camelCase } from 'lodash'
 
 type SchemaQueryOptions = {
   silent: boolean
@@ -20,6 +22,8 @@ const databaseMethods = {
       if (!options?.silent) console.log('Problem altering schema:', errorMessage(err), '\n')
     }
   },
+  // Make base "query" method available unmodified
+  query: DBConnect.query,
   getDatabaseVersion: async () => {
     const text = `SELECT name, value, timestamp
       FROM system_info
@@ -255,64 +259,6 @@ const databaseMethods = {
       }
     }
   },
-  updatePermissionPolicyRules: async () => {
-    const policies = (
-      await DBConnect.query({
-        text: `SELECT id, rules FROM permission_policy`,
-      })
-    ).rows as { id: number; rules: object }[]
-
-    // This is added as an optimisation, rather then doing "in" clause with
-    // array values from JWT we "select" from permission_flattened table, pre
-    // populated with userId, organisationId, permissionPolicyId and templateIds
-    // from: template_id in any (string_to_array(COALESCE(current_setting('jwt.claims.pp6_templateIds, true), '0'), ',')::integer[])
-    // to: template_id in select template_id from permission_flattened
-    //         where user_id = COALESCE(current_setting('jwt.claims.userId, true),''),'0')::integer
-    //         and permission_policy_id = 6
-    //         and (organisation_id = COALESCE(current_setting('jwt.claims.orgId, true),''),'0')::integer or organisation_id is null)
-    for (const row of policies) {
-      const { id, rules } = row
-
-      const jsonAsString = JSON.stringify(rules)
-      const replacement = {
-        $in: {
-          $select: {
-            $from: 'permission_flattened',
-            $where: {
-              $and: [
-                {
-                  user_id: 'jwtUserDetails_bigint_userId',
-                },
-                { permission_policy_id: id },
-                {
-                  $or: [
-                    {
-                      organisation_id: 'jwtUserDetails_bigint_orgId',
-                    },
-                    {
-                      organisation_id: {
-                        $isNull: true,
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-            template_id: true,
-          },
-        },
-      }
-      const replacementAsString = JSON.stringify(replacement)
-      const replacementAsJson = JSON.parse(
-        jsonAsString.replace(/"jwtPermission_array_bigint_template_ids"/g, replacementAsString)
-      )
-
-      await DBConnect.query({
-        text: `UPDATE permission_policy set rules = $1 where id = $2`,
-        values: [replacementAsJson, id],
-      })
-    }
-  },
   convertDataTablesToCaseInsensitive: async () => {
     type FieldMap = { label: string; gqlName: string; dataType: string; fieldName: string }
     // Get list of data tables from "data_table"
@@ -382,6 +328,271 @@ const databaseMethods = {
           console.log('Problem writing field map to data_table')
           console.log((err as any).message)
         }
+      }
+    }
+  },
+  updateLevelIdInReviewAssignments: async () => {
+    // Remove duplicate (same stage_id, number) review levels -- it's unclear
+    // how these got created, but they should be unique
+    const duplicates = await DBConnect.query({
+      text: `
+        SELECT t1.id, t1.stage_id, t1.name, t2.number,
+        t1.description, t1.single_reviewer_all_sections
+        FROM template_stage_review_level t1
+        JOIN template_stage_review_level t2
+        ON t1.stage_id = t2.stage_id AND t1.number = t2.number
+        WHERE t1.id <> t2.id
+        ORDER BY stage_id, number, id;
+      `,
+    })
+    let current = { id: 0, stage_id: 0, number: 0 }
+    const idsToDelete = [] as any
+    duplicates.rows.forEach((row) => {
+      if (row.stage_id === current.stage_id && row.number === current.number)
+        idsToDelete.push(current.id)
+      current = row
+    })
+    await DBConnect.query({
+      text: `
+        DELETE FROM template_stage_review_level
+        WHERE id = ANY($1)
+      `,
+      values: [idsToDelete],
+    })
+
+    // Update existing review assignments with correct level_ids
+    await DBConnect.query({
+      text: `
+        UPDATE review_assignment ra
+        SET level_id = (
+          SELECT id FROM template_stage_review_level
+          WHERE stage_id = (
+            SELECT id FROM template_stage
+            WHERE id = (
+              SELECT stage_id FROM review_assignment
+              WHERE id = ra.id
+            )
+          )
+          AND number = (
+            SELECT level_number FROM review_assignment
+            WHERE id = ra.id
+          )
+        )
+        WHERE level_id IS null;
+      `,
+    })
+
+    // Make stage_id/number unique for review_levels to prevent above duplicates
+    // problem in future
+    await DBConnect.query({
+      text: `
+        CREATE UNIQUE INDEX IF NOT EXISTS unique_review_level_stage_id_number
+        ON template_stage_review_level (stage_id, number)
+      `,
+    })
+  },
+  createApplicationReviewerActionRecords: async () => {
+    const totalActionCount = (
+      await DBConnect.query({
+        text: 'SELECT COUNT(*) FROM application_reviewer_action;',
+      })
+    ).rows[0].count
+
+    // Most migrations are OK to re-execute over and over before the app version
+    // is officially updated. However, this one can't be, as it needs the
+    // *previous* version of the `application_list` database function. After the
+    // initial migration, that function is replaced with a simpler (faster)
+    // version, so attempting to run the following migration again will not
+    // work. So we do an initial check -- if any `application_reviewer_action`
+    // records exist, we assume this migration must have already taken place,
+    // and so skip it.
+    if (totalActionCount > 0) {
+      console.log('  ...already done, skipping...')
+      return
+    }
+
+    // Create lists of reviewers/assigners on application table
+    await DBConnect.query({
+      text: `
+        WITH lists AS (
+          SELECT * FROM application_list(0)
+        )
+        UPDATE public.application
+          SET (reviewer_list, assigner_list)
+          = (
+              SELECT reviewers, assigners FROM lists WHERE lists.id = application.id
+          );
+      `,
+    })
+
+    // Get ids of internal users
+    const intUsers = (
+      await DBConnect.query({
+        text: `
+        SELECT DISTINCT(permissions_all."userId") FROM permissions_all
+        WHERE "isSystemOrgPermission" = true;
+      `,
+        rowMode: 'array',
+      })
+    ).rows.flat()
+
+    for (const userId of intUsers) {
+      const applications = (
+        await DBConnect.query({
+          text: `
+          SELECT id, reviewer_action, assigner_action
+            FROM application_list($1);
+        `,
+          values: [userId],
+        })
+      ).rows
+      for (const app of applications) {
+        const { id, reviewer_action, assigner_action } = app
+        if (reviewer_action === null && assigner_action === null) continue
+
+        await DBConnect.query({
+          text: `
+            INSERT INTO public.application_reviewer_action
+            (user_id, application_id, reviewer_action, assigner_action)
+            VALUES ($1, $2, $3, $4);
+          `,
+          values: [userId, id, reviewer_action, assigner_action],
+        })
+      }
+      console.log(`   - Records created for user ${userId}`)
+    }
+  },
+  removeDuplicateIndexes: async (tableName?: string) => {
+    // Matches any indexes that end in "keyXX" where XX is one or more numeric
+    // characters
+    const text = `
+      SELECT tablename, indexname FROM pg_indexes
+        WHERE indexname SIMILAR TO '%key\\d+'
+        ${tableName ? ' AND tablename = $1' : ''};
+      `
+    const values = tableName ? [tableName] : []
+
+    // Get indexes
+    const indexes = (await DBConnect.query({ text, values })).rows
+
+    for (const index of indexes) {
+      const { tablename, indexname } = index
+      await DBConnect.query({
+        text: `
+        ALTER TABLE ${tablename} DROP CONSTRAINT IF EXISTS ${indexname};`,
+      })
+    }
+  },
+  secureDataTables: async () => {
+    const dataTables = (
+      await DBConnect.query({ text: `SELECT table_name FROM data_table;`, rowMode: 'array' })
+    ).rows.flat()
+
+    for (const table of dataTables) {
+      try {
+        await DBConnect.query({
+          text: `ALTER TABLE ${config.dataTablePrefix}${table} ENABLE ROW LEVEL SECURITY;`,
+        })
+      } catch {
+        console.log(`ERROR: Problem securing data table "${table}"`)
+      }
+    }
+  },
+  disableDataTableSecurity: async () => {
+    const dataTables = (
+      await DBConnect.query({ text: `SELECT table_name FROM data_table;`, rowMode: 'array' })
+    ).rows.flat()
+
+    for (const table of dataTables) {
+      try {
+        await DBConnect.query({
+          text: `ALTER TABLE ${config.dataTablePrefix}${table} DISABLE ROW LEVEL SECURITY;`,
+        })
+      } catch {
+        console.log(`ERROR: Problem changing data table security: "${table}"`)
+      }
+    }
+  },
+  addDataViewsForLookupTables: async () => {
+    try {
+      await DBConnect.query({ text: `SELECT menu_name FROM data_view` })
+      console.log('  ...already done, skipping...')
+      // If this column exists, then we've done this before, so don't re-run the
+      // migration in the `catch` block (otherwise it'll add menu names to
+      // existing lookup table views)
+    } catch {
+      // Add new column to data views
+      await DBConnect.query({
+        text: `ALTER TABLE data_view
+        ADD COLUMN IF NOT EXISTS menu_name varchar;`,
+      })
+
+      // Fill this column with default "title" value for existing
+      await DBConnect.query({
+        text: `UPDATE data_view
+          SET menu_name = title;`,
+      })
+    }
+
+    // Add dataView codes for lookup tables that don't have one
+    const lookupTablesWithoutDataView = (
+      await DBConnect.query({
+        text: `
+      SELECT id FROM data_table
+        WHERE data_view_code IS NULL
+        AND is_lookup_table = true;`,
+        rowMode: 'array',
+      })
+    ).rows.flat()
+    const randomId = customAlphabet('1234567890', 4)
+    for (const id of lookupTablesWithoutDataView) {
+      await DBConnect.query({
+        text: `UPDATE data_table
+          SET data_view_code = CONCAT(LEFT(table_name, 3), ${randomId()})
+          WHERE id = $1;`,
+        values: [id],
+      })
+    }
+    // Then create data views for all lookup tables (if they don't have one)
+    const lookupTables = (
+      await DBConnect.query({
+        text: `
+      SELECT table_name, display_name,
+      data_view_code FROM data_table
+        WHERE is_lookup_table = true`,
+      })
+    ).rows
+    for (const table of lookupTables) {
+      const existingCount = (
+        await DBConnect.query({
+          text: `
+        SELECT COUNT(*) FROM data_view
+          WHERE table_name = $1
+          AND code = $2
+        `,
+          values: [camelCase(table.table_name), table.data_view_code],
+        })
+      ).rows[0]
+      if (existingCount.count === '0') {
+        // Make a new one
+        await DBConnect.query({
+          text: `
+          INSERT INTO data_view
+            (table_name, title, code, permission_names,
+            detail_view_header_column,
+            show_linked_applications, identifier)
+            VALUES($1, $2, $3, $4, 'id', false, $5);`,
+          values: [
+            camelCase(table.table_name),
+            table.display_name,
+            table.data_view_code,
+            [
+              'admin',
+              config.systemManagerPermissionName ?? config.defaultSystemManagerPermissionName,
+            ],
+            `${table.table_name}_${nanoid(6)}`,
+          ],
+        })
       }
     }
   },

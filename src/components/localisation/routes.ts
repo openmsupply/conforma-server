@@ -1,5 +1,7 @@
+import { FastifyPluginCallback, FastifyReply } from 'fastify'
 import path from 'path'
 import { rmdirSync, readFileSync, writeFile } from 'fs'
+import fsx from 'fs-extra'
 import { promisify } from 'util'
 import {
   getAppEntryPointDir,
@@ -13,6 +15,30 @@ import { DateTime } from 'luxon'
 const { localisationsFolder } = config
 
 const writeFilePromise = promisify(writeFile)
+
+export const localisationRoutes: FastifyPluginCallback<{ prefix: string }> = (server, _, done) => {
+  server.addHook('preValidation', async (request: any, reply: FastifyReply) => {
+    const { managerCanEditLocalisation = true } = config
+    const { isAdmin = false, isManager = false } = request.auth
+
+    if (managerCanEditLocalisation) {
+      if (!(isAdmin || isManager)) {
+        reply.statusCode = 401
+        return reply.send({ success: false, message: 'Unauthorized: not admin or manager' })
+      }
+    }
+
+    if (!managerCanEditLocalisation && !isAdmin) {
+      reply.statusCode = 401
+      return reply.send({ success: false, message: 'Unauthorized: not admin' })
+    }
+  })
+  server.post('/enable', routeEnableLanguage)
+  server.post('/install', routeInstallLanguage)
+  server.post('/remove', routeRemoveLanguage)
+  server.get('/get-all', routeGetAllLanguageFiles)
+  done()
+}
 
 export type LanguageOption = {
   languageName: string
@@ -44,8 +70,10 @@ export const routeGetLanguageFile = async (request: any, reply: any) => {
     })
   }
 
-  const stringsFile = path.join(code, 'strings.json')
-  reply.sendFile(stringsFile, path.join(getAppEntryPointDir(), localisationsFolder))
+  const data = await fsx.readJSON(
+    path.join(getAppEntryPointDir(), localisationsFolder, code, 'strings.json')
+  )
+  reply.send(data)
 }
 
 export const routeGetAllLanguageFiles = async (request: any, reply: any) => {

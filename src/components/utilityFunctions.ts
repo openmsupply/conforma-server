@@ -4,7 +4,6 @@ import fsProm from 'fs/promises'
 import { camelCase, snakeCase, mapKeys } from 'lodash'
 import { singular } from 'pluralize'
 import config from '../config'
-import { type } from 'os'
 
 // Determines the folder of the main entry file, as opposed to the
 // project root. Needed for components that traverse the local directory
@@ -81,15 +80,15 @@ export const getDistinctObjects = (
 }
 
 // Given an object, returns a new object with all keys removed whose values
-// return false when passed into the 2nd parameter function. Can be use (for
+// return false when passed into the 2nd parameter function. Can be used (for
 // example) to remove keys with null or undefined values (the default)
 // Eg. {one: 1, two: null, three: undefined} => {one: 1}
-type FilterFunction = (x: any) => boolean
+type FilterFunction = (key: string, value: any) => boolean
 export const filterObject = (
   inputObj: BasicObject,
-  filterFunction: FilterFunction = (x) => x != null
+  filterFunction: FilterFunction = (_, value) => value != null
 ) => {
-  const filtered = Object.entries(inputObj).filter(([_, value]) => filterFunction(value))
+  const filtered = Object.entries(inputObj).filter(([key, value]) => filterFunction(key, value))
   return Object.fromEntries(filtered)
 }
 
@@ -112,6 +111,7 @@ export const clearEmptyDirectories = async (directory: string) => {
     fs.statSync(path.join(directory, dir)).isDirectory()
   )
   for (const dir of directories) {
+    await clearEmptyDirectories(path.join(directory, dir))
     const files = await fsProm.readdir(path.join(directory, dir))
     if (files.length === 0) await fsProm.rmdir(path.join(directory, dir))
   }
@@ -119,13 +119,13 @@ export const clearEmptyDirectories = async (directory: string) => {
 
 export const capitaliseFirstLetter = (str: string) => str[0].toUpperCase() + str.slice(1)
 
-// The only tables in the system that we allow to be mutated directly by
-// modifyRecord or displayed as data views. All other names must have
-// "data_table_" prepended.
-const DATA_TABLE_PREFIX = config.dataTablePrefix
-const ALLOWED_TABLE_NAMES = config.allowedTableNames
-
 export const getValidTableName = (inputName: string | undefined): string => {
+  // The only tables in the system that we allow to be mutated directly by
+  // modifyRecord or displayed as data views. All other names must have
+  // "data_table_" prepended.
+  const DATA_TABLE_PREFIX = config.dataTablePrefix
+  const ALLOWED_TABLE_NAMES = config.allowedTableNames
+
   if (!inputName) throw new Error('Missing table name')
   const tableName = snakeCase(singular(inputName))
   if (ALLOWED_TABLE_NAMES.includes(tableName)) return tableName
@@ -146,8 +146,8 @@ export const getEnvVariableReplacement = (input: string) => {
   return process.env[envKey] ?? input
 }
 
-// Validates an Error object and returns its message (default) or requested property, if
-// available
+// Validates an Error object and returns its message (default) or requested
+// property, if available
 export const errorMessage = (err: unknown, property?: string) => {
   if (!isObject(err)) return 'Unknown error'
 
@@ -156,4 +156,24 @@ export const errorMessage = (err: unknown, property?: string) => {
   if (property && property in err) return (err as any)[property]
 
   return 'Unknown error'
+}
+
+// Recursively searches an object for criteria defined in `matchFn`, and
+// modifies matching values according to `modifyFn`
+export const modifyValueInObject = (
+  obj: object,
+  matchFn: (key: string, value: object) => boolean,
+  modifyFn: (value: object) => string
+): object => {
+  if (!isObject(obj)) {
+    return obj
+  }
+
+  return Object.entries(obj).reduce(
+    (acc, [key, value]) => ({
+      ...acc,
+      [key]: matchFn(key, value) ? modifyFn(value) : modifyValueInObject(value, matchFn, modifyFn),
+    }),
+    {} as object
+  )
 }

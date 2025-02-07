@@ -88,7 +88,7 @@ const evaluateExpression: EvaluateExpression = async (inputQuery, params = defau
 
         // Concatenate arrays/strings
         if (childrenResolved.every((child) => typeof child === 'string' || Array.isArray(child))) {
-          result = childrenResolved.reduce((acc, child) => acc.concat(child))
+          result = childrenResolved.reduce((acc, child) => acc.concat(child as string))
           break
         }
 
@@ -158,9 +158,10 @@ const evaluateExpression: EvaluateExpression = async (inputQuery, params = defau
           ])
           headers = queryHeaders ?? params?.headers
           returnedProperty = returnProperty
+          const queryChar = url.match(/\?[A-z]+\=[\w]+/) ? '&' : '?'
           urlWithQuery =
             fieldNames.length > 0
-              ? `${url}?${fieldNames
+              ? `${url}${queryChar}${fieldNames
                   .map((field: string, index: number) => field + '=' + values[index])
                   .join('&')}`
               : url

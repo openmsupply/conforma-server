@@ -1,10 +1,10 @@
-import DBConnect from '../databaseConnect'
+import DBConnect from '../database/databaseConnect'
 import {
   objectKeysToCamelCase,
   getValidTableName,
   capitaliseFirstLetter,
 } from '../utilityFunctions'
-import evaluateExpression from '@openmsupply/expression-evaluator'
+import evaluateExpression from '../../modules/expression-evaluator'
 import functions from '../actions/evaluatorFunctions'
 import fetch from 'node-fetch'
 import { camelCase, snakeCase, startCase } from 'lodash'
@@ -21,11 +21,14 @@ import {
   DataViewsDetailResponse,
   DataViewsTableResponse,
   FilterDefinition,
+  GraphQLFilter,
+  SingleItemDetailResponse,
 } from './types'
 import { DataView, DataViewColumnDefinition } from '../../generated/graphql'
 import dataTypeMap, { JSDataType, PostgresDataType } from './postGresToJSDataTypes'
 import config from '../../config'
 import { plural } from 'pluralize'
+import { getAdminJWT } from '../permissions/loginHelpers'
 
 // CONSTANTS
 const REST_OF_DATAVIEW_FIELDS = '...'
@@ -55,7 +58,7 @@ export const buildAllColumnDefinitions = async ({
 }: {
   permissionNames: string[]
   dataViewCode: string
-  type: 'TABLE' | 'DETAIL'
+  type: 'TABLE' | 'DETAIL' | 'RAW'
   filter?: object
   userId: number
   orgId: number | undefined
@@ -81,7 +84,7 @@ export const buildAllColumnDefinitions = async ({
   const tableNameProper = camelCase(getValidTableName(tableName))
 
   // Generate graphQL filter object
-  const gqlFilters = { ...filter, ...getFilters(dataView, userId, orgId) }
+  const gqlFilters: GraphQLFilter = { ...filter, ...getFilters(dataView, userId, orgId) }
 
   // Only for details view
   const headerColumnName = dataView.detailViewHeaderColumn ?? ''
@@ -199,16 +202,20 @@ const getSortColumn = (
   return undefined
 }
 
-const buildColumnList = (
+export const buildColumnList = (
   dataView: DataView,
   allColumns: string[],
-  type: 'TABLE' | 'DETAIL' | 'FILTER'
+  type: 'TABLE' | 'DETAIL' | 'FILTER' | 'RAW'
 ): string[] => {
   const includeField =
     type === 'TABLE'
       ? 'tableViewIncludeColumns'
       : type === 'DETAIL'
       ? 'detailViewIncludeColumns'
+      : type === 'RAW'
+      ? dataView.rawDataIncludeColumns
+        ? `rawDataIncludeColumns`
+        : `tableViewIncludeColumns`
       : dataView.filterIncludeColumns === null
       ? // If there are no specific filter columns defined, take the
         // full set of table columns
@@ -220,6 +227,12 @@ const buildColumnList = (
       ? 'tableViewExcludeColumns'
       : type === 'DETAIL'
       ? 'detailViewExcludeColumns'
+      : type === 'RAW'
+      ? dataView.rawDataExcludeColumns
+        ? `rawDataExcludeColumns`
+        : dataView.rawDataIncludeColumns
+        ? `rawDataExcludeColumns`
+        : `tableViewExcludeColumns`
       : dataView.filterIncludeColumns === null && dataView.filterExcludeColumns === null
       ? 'tableViewExcludeColumns'
       : 'filterExcludeColumns'
@@ -239,7 +252,11 @@ const buildColumnList = (
 }
 
 const getIncludeColumns = (
-  includeField: 'tableViewIncludeColumns' | 'detailViewIncludeColumns' | 'filterIncludeColumns',
+  includeField:
+    | 'tableViewIncludeColumns'
+    | 'detailViewIncludeColumns'
+    | 'filterIncludeColumns'
+    | `rawDataIncludeColumns`,
   dataView: DataView,
   allColumns: string[]
 ): string[] =>
@@ -436,7 +453,7 @@ export const constructDetailsResponse = async (
   headerDefinition: ColumnDefinition,
   fetchedRecord: { id: number; [key: string]: any },
   linkedApplications: LinkedApplication[] | undefined
-): Promise<DataViewsDetailResponse> => {
+): Promise<DataViewsDetailResponse | SingleItemDetailResponse> => {
   const id = fetchedRecord.id
   const columns = columnDefinitionMasterList.map(({ columnName }) => columnName)
 
@@ -447,8 +464,13 @@ export const constructDetailsResponse = async (
         displayDef: { [key: string]: DisplayDefinition },
         { columnName, isBasicField, dataType, columnDefinition = {} }
       ) => {
-        const { title, elementTypePluginCode, elementParameters, additionalFormatting } =
-          columnDefinition
+        const {
+          title,
+          elementTypePluginCode,
+          elementParameters,
+          additionalFormatting,
+          hideIfNull,
+        } = columnDefinition
         displayDef[columnName] = {
           title: title ?? startCase(columnName),
           isBasicField,
@@ -458,12 +480,14 @@ export const constructDetailsResponse = async (
             elementParameters: elementParameters || undefined,
             ...additionalFormatting,
           },
+          hideIfNull: hideIfNull ?? false,
         }
         return displayDef
       },
       {}
     )
 
+  const adminJWT = await getAdminJWT()
   // Build item, keeping unresolved Promises in separate array (as above)
   const evaluationPromiseArray: Promise<any>[] = []
   const evaluationFieldArray: string[] = []
@@ -480,6 +504,9 @@ export const constructDetailsResponse = async (
             APIfetch: fetch,
             // TO-DO: Need to pass Auth headers to evaluator API calls
             graphQLConnection: { fetch, endpoint: graphQLEndpoint },
+            headers: {
+              Authorization: `Bearer ${adminJWT}`,
+            },
           })
         )
         obj[columnName] = 'Awaiting promise...'
@@ -489,6 +516,17 @@ export const constructDetailsResponse = async (
     },
     {}
   )
+
+  // Don't need anything else for raw data item return
+  if (!headerDefinition) {
+    const resolvedValues = await Promise.all(evaluationPromiseArray)
+    resolvedValues.forEach((value, index) => {
+      const field = evaluationFieldArray[index]
+      item[field] = value
+    })
+    return { item }
+  }
+
   // Build header
   const header: DetailsHeader = {
     value: null,

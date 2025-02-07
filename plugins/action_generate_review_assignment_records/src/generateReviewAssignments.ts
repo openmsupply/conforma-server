@@ -16,6 +16,8 @@ import {
   ReviewAssignmentStatus,
 } from '../../../src/generated/graphql'
 import { errorMessage } from '../../../src/components/utilityFunctions'
+import { updateReviewerStats } from '../../../src/components/database/updateReviewerStats'
+import config from '../../../src/config'
 
 async function generateReviewAssignments({
   parameters,
@@ -60,7 +62,7 @@ async function generateReviewAssignments({
     if (reviewId) {
       const { stageNumber: submittedReviewStage, levelNumber: submittedReviewLevel } =
         await DBConnect.getReviewStageAndLevel(reviewId)
-      return generateForNextLevelReviews(
+      const output = await generateForNextLevelReviews(
         db,
         applicationId,
         stageNumber,
@@ -73,10 +75,20 @@ async function generateReviewAssignments({
         numReviewLevels,
         sectionCodes
       )
+      // This updates the available reviewer actions (as shown to individual
+      // users in the application list) for this application. By adding it to
+      // the Throttle, we ensure that it won't execute until this current
+      // sequence of actions is complete
+      config.Throttle.add({
+        name: `Reviewer Action update on Application ${applicationId}`,
+        data: applicationId,
+        action: updateReviewerStats,
+      })
+      return output
     }
     // isApplication submission/re-submission
-    else
-      return generateForAllReviewAssignmentLevels(
+    else {
+      const output = generateForAllReviewAssignmentLevels(
         db,
         applicationId,
         stageNumber,
@@ -87,6 +99,13 @@ async function generateReviewAssignments({
         highestReviewAssignmentLevel,
         sectionCodes
       )
+      config.Throttle.add({
+        name: `Reviewer Action update on Application ${applicationId}`,
+        data: applicationId,
+        action: updateReviewerStats,
+      })
+      return output
+    }
   } catch (error) {
     console.log(errorMessage(error))
     return {

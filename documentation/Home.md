@@ -38,6 +38,7 @@ Please see [ReadMe](__README.md) for information about maintaining this document
 - [New Server instance](New-Server-Instance.md)
 - [Demo Server Guide](Demo-Server-Guide.md)
 - [Docker](Docker.md)
+- [Performance-Tweaks-Guide](Performance-Tweaks-Guide.md)
 
 **External**
 

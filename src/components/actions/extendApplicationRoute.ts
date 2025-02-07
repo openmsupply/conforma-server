@@ -1,7 +1,7 @@
 import { combineRequestParams, errorMessage } from '../utilityFunctions'
 import { PermissionPolicyType, Trigger, TriggerQueueStatus } from '../../generated/graphql'
 import { DateTime } from 'luxon'
-import DBConnect from '../databaseConnect'
+import DBConnect from '../database/databaseConnect'
 import { getPermissionNamesFromJWT } from '../data_display/helpers'
 
 export const routeExtendApplication = async (request: any, reply: any) => {

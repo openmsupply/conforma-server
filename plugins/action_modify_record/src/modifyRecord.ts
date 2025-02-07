@@ -1,8 +1,8 @@
 import { ActionQueueStatus } from '../../../src/generated/graphql'
 import { ActionPluginType } from '../../types'
 import databaseMethods, { DatabaseMethodsType } from './databaseMethods'
-import { DBConnectType } from '../../../src/components/databaseConnect'
-import { mapValues, get } from 'lodash'
+import { DBConnectType } from '../../../src/components/database/databaseConnect'
+import { mapValues, get, snakeCase } from 'lodash'
 import {
   objectKeysToSnakeCase,
   getValidTableName,
@@ -21,8 +21,10 @@ const modifyRecord: ActionPluginType = async ({ parameters, applicationData, DBC
     shouldCreateJoinTable = true,
     regenerateDataTableFilters = false,
     ignoreNull = true,
-    noChangelog = false,
+    noChangelog,
     noChangeLog = noChangelog, // In case of common capitalisation typo
+    changelogComment,
+    changeLogComment = changelogComment,
     delete: deleteRecord = false,
     data,
     patch,
@@ -31,7 +33,7 @@ const modifyRecord: ActionPluginType = async ({ parameters, applicationData, DBC
 
   const tableNameProper = getValidTableName(tableName)
 
-  const fieldToMatch = matchField ?? 'id'
+  const fieldToMatch = matchField ? snakeCase(matchField) : 'id'
   const valueToMatch = matchValue ?? record[fieldToMatch]
   const applicationId = applicationData?.applicationId || 0
 
@@ -51,17 +53,6 @@ const modifyRecord: ActionPluginType = async ({ parameters, applicationData, DBC
     }
   }
 
-  // Data for changelog
-  const changeLogOptions = noChangeLog
-    ? { noChangeLog: true }
-    : {
-        noChangeLog: false,
-        userId: applicationData?.userId,
-        orgId: applicationData?.orgId,
-        username: applicationData?.username,
-        applicationId: applicationData?.applicationId,
-      }
-
   try {
     await createOrUpdateTable(DBConnect, db, tableNameProper, fullRecord, tableName)
 
@@ -74,6 +65,19 @@ const modifyRecord: ActionPluginType = async ({ parameters, applicationData, DBC
       : 'CREATE'
 
     const isMultipleRecords = recordIds.length > 1
+
+    // Data for changelog -- Default is NO change log for CREATE operations, but
+    // there is for UPDATE and DELETE
+    const changeLogOptions =
+      (noChangeLog === undefined && operationType === 'CREATE') || noChangeLog == true
+        ? { noChangeLog: true }
+        : {
+            noChangeLog: false,
+            userId: applicationData?.userId,
+            orgId: applicationData?.orgId,
+            applicationId: applicationData?.applicationId,
+            comment: changeLogComment,
+          }
 
     let result: any[] = []
 
@@ -100,7 +104,7 @@ const modifyRecord: ActionPluginType = async ({ parameters, applicationData, DBC
     }
 
     for (const recordId of recordIds) {
-      if (shouldCreateJoinTable)
+      if (shouldCreateJoinTable && operationType !== 'DELETE')
         await db.createJoinTableAndRecord(tableNameProper, applicationId, recordId)
     }
 

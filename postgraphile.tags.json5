@@ -1,0 +1,95 @@
+{
+  /**
+   * Smart tag definitions to manipulate the exposed GraphQL schema from
+   * Postgraphile.
+   * See documentation:
+   * - https://www.graphile.org/postgraphile/smart-tags/
+   * - https://www.graphile.org/postgraphile/smart-tags-file/
+   */
+  version: 1,
+  config: {
+    class: {
+      /**
+       * The foreign key references on these tables create "virtual" links to
+       * the new "user_list" view to preserve the GraphQL structure from each of
+       * these nodes.
+       */
+      application: {
+        tags: {
+          foreignKey: '(user_id) references user_list(id)',
+        },
+      },
+      review_assignment: {
+        tags: {
+          foreignKey: [
+            '(reviewer_id) references user_list(id)',
+            '(assigner_id) references user_list(id)',
+          ],
+        },
+      },
+      review: {
+        tags: {
+          foreignKey: '(reviewer_id) references user_list(id)',
+        },
+      },
+      review_assignment_assigner_join: {
+        tags: {
+          foreignKey: '(assigner_id) references user_list(id)',
+        },
+      },
+      application_note: {
+        tags: {
+          foreignKey: '(user_id) references user_list(id)',
+        },
+      },
+      permission_join: {
+        tags: {
+          foreignKey: '(user_id) references user_list(id)',
+        },
+      },
+      /**
+       * This is the original "user" table. We hide it from the GraphQL schema
+       * for privacy reasons and replace it with a more limited "user_list"
+       * view. It is also renamed, which frees up the "user" name for the
+       * "user_list_admin" view, which means existing data_views can access the
+       * user list without re-configuration.
+       */
+      user: {
+        tags: { omit: 'read,update,create,delete,all,many', name: 'hiddenUser' },
+      },
+      /**
+       * Two additional views are created in Postgres:
+       * - "user_list": same as the "user" table, but only exposing the name and
+       *   id columns. This is publically accessible (no row-level security), so
+       *   important not to expose personal information. This view is what is
+       *   included in the GraphQL schema (as above). Any requests for data
+       *   other than these name fields must go through the 'data view'
+       *   endpoints, which are restricted appropriately based on permission and
+       *   data view configuration.
+       * - "user_list_admin": the full "user" table, but with row-level security
+       *   enabled (all rows blocked except for Admin). Used when querying
+       *   "users" via GraphQL in the back end (in data view endpoints). The
+       *   reason for this additional view rather than just using the original
+       *   "user" table in this way is that the "user" table causes foreign key
+       *   conflicts with the above artificial foreign key links, whereas a view
+       *   doesn't. It is also renamed to "user", so it appears the same as the
+       *   original "user" table to existing data view configs.
+       */
+      user_list_admin: {
+        tags: {
+          name: 'user',
+        },
+      },
+      /**
+       * This recreates the GraphQL link from the "organisation" table to the
+       * "user" table, which allows back-end data view queries to drill down to
+       * connected orgs from the "user_list_admin" view.
+       */
+      user_organisation: {
+        tags: {
+          foreignKey: '(user_id) references user_list_admin(id)|@foreignFieldName userOrganisations',
+        },
+      },
+    },
+  },
+}

@@ -1,7 +1,7 @@
 import { actionLibrary } from '../../pluginsConnect'
 import { getApplicationData } from '.././getApplicationData'
 import { combineRequestParams } from '../../utilityFunctions'
-import DBConnect from '../../databaseConnect'
+import DBConnect from '../../database/databaseConnect'
 import { testTrigger, RequestProps } from './testTrigger'
 
 // These routes should only be used for testing in development. They should

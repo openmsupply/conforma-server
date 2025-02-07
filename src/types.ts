@@ -1,4 +1,4 @@
-import { BasicObject, EvaluatorNode } from '@openmsupply/expression-evaluator/lib/types'
+import { BasicObject, EvaluatorNode } from './modules/expression-evaluator'
 import {
   ActionQueueStatus,
   ApplicationOutcome,
@@ -10,6 +10,7 @@ import { EmailOperationMode } from './config'
 import { PoolConfig } from 'pg'
 import { Schedulers } from './components/scheduler'
 import { ExternalApiConfigs } from './components/external-apis/types'
+import { EventThrottle } from './components/actions/throttle'
 
 export interface ActionInTemplate {
   code: string
@@ -97,6 +98,16 @@ export interface ReviewData {
     decision: string
     comment: string | null
   }
+  reviewAssignment?: {
+    id: number
+    reviewer?: {
+      id: number
+      username: string
+      firstName: string
+      lastName: string
+      email: string
+    }
+  }
 }
 
 // Comes from database query "getApplicationData"
@@ -119,6 +130,7 @@ export interface BaseApplicationData {
   userId: number
   orgId: number | null
   outcome: ApplicationOutcome
+  urlProperties: Record<string, string | number | boolean>
 }
 
 export interface ActionApplicationData extends BaseApplicationData {
@@ -281,10 +293,12 @@ export interface ServerPreferences {
   SMTPConfig?: SMTPConfig
   systemManagerPermissionName?: string
   managerCanEditLookupTables?: boolean
+  managerCanEditLocalisation?: boolean
   previewDocsMinKeepTime?: string
   fileCleanupSchedule?: number[] | ScheduleObject
   backupSchedule?: number[] | ScheduleObject
   backupFilePrefix?: string
+  skipBackup?: boolean
   maxBackupDurationDays?: number
   archiveSchedule?: number[] | ScheduleObject
   archiveFileAgeMinimum?: number
@@ -295,6 +309,7 @@ export interface ServerPreferences {
   timezone?: string
   externalApiConfigs?: ExternalApiConfigs
   envVars?: string[]
+  maintenanceSite?: string
 }
 
 export const serverPrefKeys: (keyof ServerPreferences)[] = [
@@ -320,6 +335,7 @@ export const serverPrefKeys: (keyof ServerPreferences)[] = [
   'timezone',
   'externalApiConfigs',
   'envVars',
+  'maintenanceSite',
 ]
 
 export interface WebAppPrefs {
@@ -354,6 +370,7 @@ interface ConfigBase {
   backupsFolder: string
   genericThumbnailsFolderName: string
   testScriptFolder: string
+  defaultUnderMaintenanceSite: string
   nodeModulesFolder: string
   jwtSecret: string
   RESTport: number
@@ -363,12 +380,15 @@ interface ConfigBase {
   filterListMaxLength: number
   filterListBatchSize: number
   filterColumnSuffix: string
+  fileUploadLimit: number
   isProductionBuild: boolean
   defaultSystemManagerPermissionName: string
   webHostUrl?: string
   productionHost?: string
   isLiveServer: boolean
   emailMode: EmailOperationMode
+  maintenanceMode: boolean
+  Throttle: EventThrottle
 }
 
 export type Config = ConfigBase & ServerPreferences & { scheduledJobs?: Schedulers }

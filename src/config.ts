@@ -1,9 +1,18 @@
 require('dotenv').config()
 import { DateTime, Settings } from 'luxon'
-import preferences from '../preferences/preferences.json'
-import { readFileSync } from 'fs'
 import { version } from '../package.json'
 import { serverPrefKeys, ServerPreferences, WebAppPrefs, Config } from './types'
+import { EventThrottle } from './components/actions/throttle'
+import { readJsonSync } from 'fs-extra'
+import path from 'path'
+import { getAppEntryPointDir } from './components/utilityFunctions'
+import { merge } from 'lodash'
+
+const preferencesFolder = '../preferences'
+const preferencesFileName = 'preferences.json'
+
+const preferences = loadPrefs()
+
 const serverPrefs: ServerPreferences = preferences.server as ServerPreferences
 const isProductionBuild = process.env.NODE_ENV === 'production'
 const siteHost = (preferences.web as WebAppPrefs)?.siteHost
@@ -27,6 +36,12 @@ Operation modes:
   actually sent). An alternative development mode.
 */
 
+// Global Throttle instance, for spacing out processing when (potentially)
+// several hundred events occur simultaneously, or for making sure a particular
+// function waits till an existing (throttled) event is complete
+const Throttle = new EventThrottle()
+
+// Global config object
 const config: Config = {
   pg_database_connection: {
     user: 'postgres',
@@ -39,21 +54,19 @@ const config: Config = {
     connectionTimeoutMillis: 20000,
   },
   version,
-  // In production postgraphile is started with -q and -i /postgraphile/...
-  graphQLendpoint: isProductionBuild
-    ? 'http://localhost:5000/postgraphile/graphql'
-    : 'http://localhost:5000/graphql',
+  graphQLendpoint: 'http://localhost:8080/graphql',
   // 'Folder path from perspective of server.ts/js'
   filesFolder: '../files',
   pluginsFolder: '../plugins',
   imagesFolder: '../images',
   databaseFolder: '../database',
   localisationsFolder: '../localisation',
-  preferencesFolder: '../preferences',
-  preferencesFileName: 'preferences.json',
+  preferencesFolder,
+  preferencesFileName,
   backupsFolder: '../backups',
   genericThumbnailsFolderName: '_generic_thumbnails',
   testScriptFolder: '../snapshot_test_scripts',
+  defaultUnderMaintenanceSite: 'https://msupply.foundation/projects/conforma',
   // In production postgraphile is started with -q and -i /postgraphile/...
   nodeModulesFolder:
     process.env.NODE_ENV === 'production' ? '../../node_modules' : '../node_modules',
@@ -70,6 +83,7 @@ const config: Config = {
   filterListMaxLength: 10,
   filterListBatchSize: 1000,
   filterColumnSuffix: '_filter_data', // snake_case,
+  fileUploadLimit: 2_147_483_648, // 2GB, fastify-multipart
   isProductionBuild,
   defaultSystemManagerPermissionName: 'systemManager',
   ...serverPrefs,
@@ -77,14 +91,33 @@ const config: Config = {
   productionHost: siteHost,
   isLiveServer,
   emailMode: getEmailOperationMode(serverPrefs.emailTestMode, serverPrefs.testingEmail),
+  maintenanceMode: false,
+  Throttle,
+}
+
+function loadPrefs() {
+  const mainPrefs = readJsonSync(
+    path.join(getAppEntryPointDir(), preferencesFolder, preferencesFileName)
+  )
+  if (process.env.PREFERENCE_OVERRIDES) {
+    try {
+      const overridePrefs = readJsonSync(process.env.PREFERENCE_OVERRIDES)
+      console.log('PREFERENCE_OVERRIDES found:')
+      console.log(JSON.stringify(overridePrefs, null, 2))
+      return merge(mainPrefs, overridePrefs)
+    } catch {
+      console.log(
+        `ERROR: Unable to load file specified in PREFERENCE_OVERRIDES: ${process.env.PREFERENCE_OVERRIDES}`
+      )
+      return mainPrefs
+    }
+  } else return mainPrefs
 }
 
 // Mutate the global config object to inject new preferences
-export const refreshConfig = (config: Config, prefsFilePath: string) => {
+export const refreshConfig = (config: Config) => {
   console.log('\nUpdating system configuration...')
-  // prefsFilePath is passed in rather than imported from constants to prevent
-  // circular reference
-  const prefs = JSON.parse(readFileSync(prefsFilePath, 'utf-8'))
+  const prefs = loadPrefs()
   const serverPrefs: ServerPreferences = prefs.server
   const webAppPrefs: WebAppPrefs = prefs.web
   serverPrefKeys.forEach((key) => {

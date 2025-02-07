@@ -1,4 +1,4 @@
-import databaseConnect from '../databaseConnect'
+import databaseConnect from '../database/databaseConnect'
 import { getUserInfo } from './loginHelpers'
 import { updateRowPolicies } from './rowLevelPolicyHelpers'
 import bcrypt from 'bcrypt'
@@ -133,10 +133,18 @@ const routeUserPermissions = async (request: any, reply: any) => {
     ).sort()
   } else {
     // Get permissions for organisation without association with as user
-    const orgExistingPermissions = await databaseConnect.getSystemOrgTemplatePermissions(
-      isSystemOrg
-    )
-    availablePermissions = Array.from(new Set(orgExistingPermissions.map((p) => p.perm))).sort()
+    const orgExistingPermissions = await databaseConnect.getOrgTemplatePermissions(orgId ?? 0)
+
+    grantedPermissions = Array.from(
+      new Set(orgExistingPermissions.map((p) => p.permissionName))
+    ).sort()
+    availablePermissions = Array.from(
+      new Set(
+        Object.values(templatePermissionRows)
+          .filter(({ permissionName }) => !grantedPermissions.includes(permissionName))
+          .map((p) => p.permissionName)
+      )
+    ).sort()
   }
 
   // Store array of object per permissionNames with properties and an array of templateCodes
@@ -144,7 +152,14 @@ const routeUserPermissions = async (request: any, reply: any) => {
     templatePermissionRows.reduce(
       (
         templatePermissions,
-        { permissionNameId, permissionName, templateCode, description, isSystemOrgPermission }
+        {
+          permissionNameId,
+          permissionName,
+          templateCode,
+          description,
+          policyName,
+          isSystemOrgPermission,
+        }
       ) => {
         if (!templatePermissions[permissionName])
           templatePermissions[permissionName] = {
@@ -152,6 +167,7 @@ const routeUserPermissions = async (request: any, reply: any) => {
             name: permissionName,
             description,
             displayName: startCase(permissionName),
+            policyName,
             isSystemOrgPermission,
             isUserGranted: grantedPermissions.includes(permissionName),
             templateCodes: [],

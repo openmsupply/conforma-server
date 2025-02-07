@@ -1,9 +1,8 @@
-import evaluateExpression from '@openmsupply/expression-evaluator'
+import evaluateExpression, { EvaluatorNode } from '../../modules/expression-evaluator'
 import { AxiosRequestConfig } from 'axios'
 import { ApiAuthentication, QueryParameters } from './types'
 import { getEnvVariableReplacement } from '../utilityFunctions'
 import { ActionApplicationData } from '../../types'
-import { EvaluatorNode } from '@openmsupply/expression-evaluator/lib/types'
 
 // Adds appropriate auth properties to Axios request object (modifies in-place)
 const constructAuthHeader = (

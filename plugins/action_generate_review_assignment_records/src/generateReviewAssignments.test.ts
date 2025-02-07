@@ -4,7 +4,7 @@
 // database has entered correct information
 
 import { map, omit } from 'lodash'
-import DBConnect from '../../../src/components/databaseConnect'
+import DBConnect from '../../../src/components/database/databaseConnect'
 import { ActionQueueStatus, ReviewAssignmentStatus } from '../../../src/generated/graphql'
 import { action as generateReviewAssignments } from './index'
 import { ResultObject } from './types'

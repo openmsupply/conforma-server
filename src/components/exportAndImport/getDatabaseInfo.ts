@@ -1,5 +1,5 @@
 import { camelCase } from 'lodash'
-import databaseConnect from '../databaseConnect'
+import databaseConnect from '../database/databaseConnect'
 import { DatabaseTables, DatabaseTable } from './types'
 
 // method will query DB for column definiations and return an array in shape of DatabaseTable

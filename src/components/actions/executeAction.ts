@@ -4,12 +4,11 @@ import {
   ActionPayload,
   ActionQueueExecutePayload,
 } from '../../types'
-import evaluateExpression from '@openmsupply/expression-evaluator'
+import evaluateExpression, { EvaluatorNode } from '../../modules/expression-evaluator'
 import { merge } from 'lodash'
 import functions from './evaluatorFunctions'
-import DBConnect from '../databaseConnect'
+import DBConnect from '../database/databaseConnect'
 import fetch from 'node-fetch'
-import { EvaluatorNode } from '@openmsupply/expression-evaluator/lib/types'
 import { getApplicationData } from './getApplicationData'
 import { ActionQueueStatus } from '../../generated/graphql'
 import config from '../../config'

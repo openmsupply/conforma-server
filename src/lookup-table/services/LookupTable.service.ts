@@ -5,10 +5,12 @@ import { setDataTypes, toCamelCase, toSnakeCase } from '../utils'
 import { LookupTableHeadersValidator, LookupTableNameValidator } from '../utils/validations'
 import { ValidationErrors } from '../utils/validations/error'
 import { ILookupTableNameValidator, IValidator } from '../utils/validations/types'
+import { getHash, hashLookupTable } from '../../components/template-import-export'
 
 type LookupTableServiceProps = {
   tableId?: number
   name?: string
+  dataViewCode: string
 }
 
 const LookupTableService = async (props: LookupTableServiceProps) => {
@@ -17,14 +19,17 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
   let fieldMaps: FieldMapType[] = []
   let rows: object[] = []
   let dbFieldMap: any = []
+  let dataViewCode = props.dataViewCode
   let structure: LookupTableStructureFull
+  let rowHashes: string[] = []
 
   // Initialisation
   const lookupTableModel = LookupTableModel()
   if (props.tableId) {
     tableId = props.tableId
     structure = await lookupTableModel.getStructureById(tableId)
-  } else if (props.name) {
+  }
+  if (props.name) {
     name = props.name
   }
 
@@ -32,6 +37,7 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
   const getAllRowsForTable = async () => await lookupTableModel.getAllRowsForTable(structure)
 
   let tableName = ''
+
   const createTable = async () => {
     tableName = toSnakeCase(singular(name))
 
@@ -59,20 +65,28 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
       // types
       setDataTypes(fieldMaps, rows)
 
-      const newTableFieldMap = [idField, ...fieldMaps]
-
-      tableId = await lookupTableModel.createStructure({
-        tableName,
-        displayName: name,
-        fieldMap: newTableFieldMap,
-      })
+      const newTableFieldMap = [
+        idField,
+        ...fieldMaps
+          // Ignore if incoming CSV already has "id" field
+          .filter((field) => field.label !== 'id'),
+      ]
 
       await lookupTableModel.createTable({
         tableName,
         fieldMap: newTableFieldMap,
       })
 
+      tableId = await lookupTableModel.createStructure({
+        tableName,
+        displayName: name,
+        fieldMap: newTableFieldMap,
+        dataViewCode,
+      })
+
       await createUpdateRows()
+      await createOrUpdateDataView()
+      await hashLookupTable(tableId)
 
       return buildSuccessMessage(results)
     } catch (err) {
@@ -98,6 +112,8 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
 
       await createNewColumns()
       await createUpdateRows()
+      await createOrUpdateDataView()
+      await hashLookupTable(tableId)
 
       return buildSuccessMessage(results)
     } catch (err) {
@@ -178,7 +194,7 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
       (obj: any) => dbFieldMap.filter((otherObj: any) => otherObj.label == obj.label).length === 0
     )
 
-    await lookupTableModel.updateStructureFieldMaps(tableName, fieldMaps)
+    await lookupTableModel.updateStructureFieldMaps(tableName, name, fieldMaps, dataViewCode)
     for (let fieldMap of fieldsToAdd) {
       await lookupTableModel.addTableColumns(tableName, fieldMap)
     }
@@ -202,6 +218,21 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
     }
   }
 
+  const createOrUpdateDataView = async () => {
+    const existingDataViews = await lookupTableModel.getDataViews(
+      tableName,
+      structure?.dataViewCode ?? dataViewCode
+    )
+
+    if (existingDataViews.length > 0) {
+      for (const dataView of existingDataViews) {
+        await lookupTableModel.updateDataView(dataView.id, name, dataViewCode)
+      }
+    } else {
+      await lookupTableModel.createDataView(name, tableName, dataViewCode)
+    }
+  }
+
   function comparer(otherArray: any[]) {
     return function (current: any) {
       return (
@@ -214,6 +245,7 @@ const LookupTableService = async (props: LookupTableServiceProps) => {
 
   const createUpdateRows = async () => {
     for (const row of rows) {
+      rowHashes.push(getHash(row))
       await lookupTableModel.createOrUpdateRow(tableName, row)
     }
     await lookupTableModel.deleteRemovedRows(tableName, rows)

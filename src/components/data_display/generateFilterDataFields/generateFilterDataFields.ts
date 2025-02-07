@@ -1,6 +1,6 @@
 import databaseMethods from './databaseMethods'
-import DBConnect from '../../databaseConnect'
-import evaluateExpression from '@openmsupply/expression-evaluator'
+import DBConnect from '../../database/databaseConnect'
+import evaluateExpression from '../../../modules/expression-evaluator'
 import functions from '../../actions/evaluatorFunctions'
 import { queryDataTable, updateRecord } from '../gqlDynamicQueries'
 import config from '../../../config'
@@ -127,8 +127,7 @@ export const generateFilterDataFields = async (table: string, fullUpdate: boolea
         blockSize,
         fetchedCount,
         'id',
-        true,
-        ''
+        true
       )
 
       if (error) return error

@@ -1,6 +1,6 @@
 import { ActionApplicationData, ActionPayload, BaseApplicationData, ReviewData } from '../../types'
-import DBConnect from '../databaseConnect'
-import { BasicObject } from '@openmsupply/expression-evaluator/lib/types'
+import DBConnect from '../database/databaseConnect'
+import { BasicObject } from '../../modules/expression-evaluator'
 import { getAppEntryPointDir } from '../utilityFunctions'
 import config from '../../config'
 import { getUserInfo } from '../permissions/loginHelpers'

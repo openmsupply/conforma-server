@@ -1,19 +1,10 @@
-import path from 'path'
-import { readFileSync, writeFile } from 'fs'
-import { promisify } from 'util'
-import databaseConnect from '../databaseConnect'
-import {
-  getAppEntryPointDir,
-  combineRequestParams,
-  isObject,
-  errorMessage,
-} from '../../components/utilityFunctions'
+import { readJSONSync, writeJson } from 'fs-extra'
+import { combineRequestParams, errorMessage, isObject } from '../../components/utilityFunctions'
 import config, { refreshConfig } from '../../config'
 import { DEFAULT_LOGOUT_TIME, PREFERENCES_FILE } from '../../constants'
-import { readLanguageOptions } from '../localisation/routes'
 import { Preferences } from '../../types'
-
-const writeFilePromise = promisify(writeFile)
+import databaseConnect from '../database/databaseConnect'
+import { readLanguageOptions } from '../localisation/routes'
 
 export type LanguageOption = {
   languageName: string
@@ -24,13 +15,10 @@ export type LanguageOption = {
   enabled: boolean
 }
 
-export const loadCurrentPrefs = () =>
-  JSON.parse(
-    readFileSync(path.join(getAppEntryPointDir(), '../preferences/preferences.json'), 'utf8')
-  )
+export const loadCurrentPrefs = () => readJSONSync(PREFERENCES_FILE)
 
 export const setPreferences = async (prefs: Preferences) => {
-  await writeFilePromise(PREFERENCES_FILE, JSON.stringify(prefs, null, 2))
+  await writeJson(PREFERENCES_FILE, prefs, { spaces: 2 })
 }
 
 // Serve prefs to front-end
@@ -47,13 +35,20 @@ export const routeGetPrefs = async (request: any, reply: any) => {
     latestSnapshot,
     allowedTableNames,
     logoutAfterInactivity,
+    maintenanceMode: {
+      enabled: config.maintenanceMode,
+      redirect: config.maintenanceSite ?? config.defaultUnderMaintenanceSite,
+    },
   })
 }
 
 // Return all prefs for editing (Admin only)
 export const routeGetAllPrefs = async (request: any, reply: any) => {
   const preferences = loadCurrentPrefs()
-  reply.send({ ...preferences })
+  const overrides = process.env.PREFERENCE_OVERRIDES
+    ? readJSONSync(process.env.PREFERENCE_OVERRIDES)
+    : null
+  reply.send({ preferences, overrides })
 }
 
 export const routeSetPrefs = async (request: any, reply: any) => {
@@ -66,7 +61,7 @@ export const routeSetPrefs = async (request: any, reply: any) => {
   try {
     await setPreferences({ server, web })
 
-    refreshConfig(config, PREFERENCES_FILE)
+    refreshConfig(config)
 
     return reply.send({ success: true, preferences: { server, web } })
   } catch (err) {

@@ -1,7 +1,7 @@
 // Test suite for the grantPermissions Action -- adds a permisison to valerio user to reviewOrgRego
 // Ideally would verify that logic works by checking db (permission_join table) before and after
 
-import DBConnect from '../../../src/components/databaseConnect'
+import DBConnect from '../../../src/components/database/databaseConnect'
 import { ActionQueueStatus } from '../../../src/generated/graphql'
 import { action as grantPermissions } from './index'
 

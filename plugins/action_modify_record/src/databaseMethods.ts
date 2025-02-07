@@ -1,18 +1,17 @@
 import { errorMessage } from '../../../src/components/utilityFunctions'
 import config from '../../../src/config'
-import { DBOperationType } from '../../../src/types'
 
 const DATA_TABLE_PREFIX = config.dataTablePrefix
 
 interface UserData {
   userId?: number | null
   orgId?: number | null
-  username?: string
   applicationId?: number | null
 }
 
 interface ChangeLogOptions extends UserData {
   noChangeLog: boolean
+  comment?: string
 }
 
 const databaseMethods = (DBConnect: any) => {
@@ -23,11 +22,11 @@ const databaseMethods = (DBConnect: any) => {
   ) => {
     const text = newData
       ? `
-      SELECT ${Object.keys(newData).join(', ')} FROM ${tableName}
+      SELECT ${Object.keys(newData).join(', ')} FROM "${tableName}"
       WHERE id = $1
     `
       : `
-      SELECT * FROM ${tableName}
+      SELECT * FROM "${tableName}"
       WHERE id = $1
     `
     try {
@@ -49,7 +48,7 @@ const databaseMethods = (DBConnect: any) => {
       VALUES (${DBConnect.getValuesPlaceholders(record)})
       RETURNING *
       `
-    const { userId, orgId, username, applicationId, noChangeLog } = changeLogOptions
+    const { userId, orgId, applicationId, noChangeLog, comment } = changeLogOptions
     try {
       const result = await DBConnect.query({ text, values: Object.values(record) })
       const firstRow = result.rows[0]
@@ -62,8 +61,8 @@ const databaseMethods = (DBConnect: any) => {
           record,
           userId,
           orgId,
-          username,
-          applicationId
+          applicationId,
+          comment
         )
       return { success: true, [tableName]: firstRow, recordId: firstRow.id }
     } catch (err) {
@@ -92,7 +91,7 @@ const databaseMethods = (DBConnect: any) => {
       record: Record<string, any>,
       changeLogOptions: ChangeLogOptions
     ) => {
-      const { userId, orgId, username, applicationId, noChangeLog } = changeLogOptions
+      const { userId, orgId, applicationId, noChangeLog, comment } = changeLogOptions
 
       let oldData: Record<string, any> = {}
       const newData = { ...record }
@@ -146,8 +145,8 @@ const databaseMethods = (DBConnect: any) => {
             newData,
             userId,
             orgId,
-            username,
-            applicationId
+            applicationId,
+            comment
           )
         return {
           success: true,
@@ -160,7 +159,7 @@ const databaseMethods = (DBConnect: any) => {
       }
     },
     deleteRecord: async (tableName: string, id: number, changeLogOptions: ChangeLogOptions) => {
-      const { userId, orgId, username, applicationId, noChangeLog } = changeLogOptions
+      const { userId, orgId, applicationId, noChangeLog, comment } = changeLogOptions
 
       let oldData: Record<string, any> = {}
 
@@ -190,8 +189,8 @@ const databaseMethods = (DBConnect: any) => {
             {},
             userId,
             orgId,
-            username,
-            applicationId
+            applicationId,
+            comment
           )
         return {
           success: true,
@@ -205,11 +204,13 @@ const databaseMethods = (DBConnect: any) => {
     createRecord,
     createTable: async (tableName: string, tableNameOriginal: string) => {
       const text = `CREATE TABLE "${tableName}" ( id serial PRIMARY KEY)`
-      console.log('creating table with statement: ', text)
+      console.log('Creating table with statement: ', text)
       try {
+        await DBConnect.query({ text })
+        // Enable row-level security for table so its only accessible through
+        // data-view endpoints
         await DBConnect.query({
-          text,
-          value: [tableName],
+          text: `ALTER TABLE "${tableName}" ENABLE ROW LEVEL SECURITY;`,
         })
         // Also register new table in "data" table
         await DBConnect.query({

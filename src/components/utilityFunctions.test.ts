@@ -1,4 +1,9 @@
-import { objectKeysToCamelCase, objectKeysToSnakeCase, filterObject } from './utilityFunctions'
+import {
+  objectKeysToCamelCase,
+  objectKeysToSnakeCase,
+  filterObject,
+  modifyValueInObject,
+} from './utilityFunctions'
 
 test('Convert object to camelCase', () => {
   expect(objectKeysToCamelCase({ snake_key_1: 1, otherCaseKey: 2 })).toEqual({
@@ -41,5 +46,21 @@ test('Filter object using custom filter for any falsy value', () => {
     twoString: 'two',
     arrayValue: [1, 2, 'three'],
     objectValue: { one: 1, two: 'two', nullValue: null },
+  })
+})
+
+test(`Check modify in object`, () => {
+  return expect(
+    modifyValueInObject(
+      {
+        something: { $from: 'yow' },
+        somethingElse: { nested: [], alsoNested: { $from: 'hi' } },
+      },
+      (key, value) => key == '$from' && typeof value == 'string',
+      (value) => `private.${value}`
+    )
+  ).toEqual({
+    something: { $from: 'private.yow' },
+    somethingElse: { nested: [], alsoNested: { $from: 'private.hi' } },
   })
 })

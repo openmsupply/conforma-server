@@ -1,9 +1,9 @@
 ## Contents  <!-- omit in toc -->
 <!-- toc -->
 - [API](#api)
-  - [`/data-views`](#data-views)
-  - [`/data-views/<dataViewCode>?<queries>`](#data-viewsdataviewcodequeries)
-  - [`/data-views/<dataViewCode>/<itemId>`](#data-viewsdataviewcodeitemid)
+  - [`/data-views` (GET)](#data-views-get)
+  - [`/data-views/<dataViewCode>?<queries>` (POST)](#data-viewsdataviewcodequeries-post)
+  - [`/data-views/<dataViewCode>/<itemId>` (GET)](#data-viewsdataviewcodeitemid-get)
 - [Configuration](#configuration)
   - [`data_view` table](#data_view-table)
   - [`data_view_column_definition` table](#data_view_column_definition-table)
@@ -31,7 +31,7 @@ Configuration of the data views can be done in the UI by an Admin, using url `/a
 
 Custom data is available at the following endpoints:
 
-### `/data-views`
+### `/data-views` (GET)
 
 Returns an array of data table views the user is allowed to see (based on JWT header), formatted as follows:
 
@@ -50,7 +50,7 @@ Returns an array of data table views the user is allowed to see (based on JWT he
 
 This endpoint is called in order to populate the Database menu in the UI.
 
-### `/data-views/<dataViewCode>?<queries>`
+### `/data-views/<dataViewCode>?<queries>` (POST)
 
 For querying a specific table. Data is returned in the following structure:
 
@@ -112,10 +112,12 @@ Query parameters are (currently) as follows:
 - `offset` -- start from record number (default: 0) (used in conjunction with `first` to control pagination)
 - `order-by` -- field to sort by (default: `id`),
 - `ascending` -- whether to sort ascending or descending (default: `true`)
+- `raw` -- set to `true` and the table data will be returned as just a single array of objects, i.e. no column or data definitions. This is useful when making queries to a table in an application form (e.g. a list of countries in a drop-down) -- you just want simple access to the data, not its display definitions.
 
-Eventually, there will be additional parameters for searching and filtering -- not yet implemented
+##### Filter / search
+Additional filtering is primarily done via JSON in the request body. The JSON object is a GraphQL filter object. However, an additional `search` query parameter can be provided, which will be converted to and merged with the Filter JSON (the `search` parameter adds a filter for the `table_search_columns` that are [defined](#data_view-table)).
 
-### `/data-views/<dataViewCode>/<itemId>`
+### `/data-views/<dataViewCode>/<itemId>` (GET)
 
 Fetches data about a single item, for display in data "Details" view. Data is returned in the following format:
 
@@ -200,6 +202,8 @@ Fetches data about a single item, for display in data "Details" view. Data is re
 
 Note the different types of data returned and the formatting instructions. Also, the "orgs" field has a complex value and is not just a simple field from the "user" table (hence `isBasicField: false`). More on this below.
 
+As with the [Table](#data-viewsdataviewcodequeries-post) request, the query parameter `raw=true` can be added and the returned value will just contain the single data entity with no display definitions.
+
 ## Configuration
 
 ### `data_view` table
@@ -227,11 +231,13 @@ Some things to be aware of:
   - if you've named a "custom" field in here and yet still want to return all other fields, you can specify this by including the special value "..." as an item, which has the same effect as the "...rest" parameter in javascript.
 - `table_view_exclude_columns`: an array of columns to exclude. Basically, it takes all the columns collected from the "include" list, and removes any named here.
 - `detail_view_include_columns` / `detail_view_exclude_columns`: exactly the same as the "table_view" fields, except applies to the fields that show up in the Details view
+- `raw_data_include_columns` / `raw_data_exclude_columns`: same as the `table_view` column inclusion/exclusions, except these are the columns returned when the `raw=true` parameter is set. These can be left `null`, in which case the `table_view` columns will be returned.
 - `detail_view_header_column`: name of the field/column whose value should be used as the Header display in Details view. If not specified, the table name will just be used.
-- `default_sort_column`: the column that the table data will be ordered by when no column-sort is selected in the front-end. You should rarely need to set this -- the default is `id`, which usually corresponds to the order in which items were added, so is fine for most purposes. However, if you need to override it with a different column, this allows it.
+- `default_sort_column`: the column that the table data will be ordered by when no column-sort is selected in the front-end. You should rarely need to set this -- the default is `id`, which usually corresponds to the order in which items were added, so is fine for most purposes. However, if you need to override it with a different column, this allows it. It will be sorted *ascending* by default -- if you want to change this to *descending*, append "_DESC" to the column, e.g. `timestamp_DESC`
 - `show_linked_applications`: if `true`, the `/item` endpoint will also return an array of linked applications connected to this particular item. These are taken from the outcome "join" tables, whose records are created on successful application approvals.
 - `priority`: when multiple views match the `code` (i.e. user has permissions for more than one), the view with the highest priority will be returned the to the user. A typical use case for this would be if you have a particular view that is open to all users (i.e `permissionNames` is `null`), but you want users with certain permissions to see a different view for the same request (e.g Staff might be able to see *all* users, whereas external users can only see those in their own organisation). Default value: `1`.
 - `default_filter_string`: a string that will be appended to the url of the data view in the front-end in order to implement the default filtering for the view (see [Data View Filters](Data-View-Filters.md)). You can work out what the string should be by setting the filters (in the front-end) and just copying the url query string. For example, a default filter for a product table might want to restrict the initial view to active (non-cancelled) products from Australia, so the `default_filter_string` would be something like `is-active=true&registered-in=Australia`
+- `menu_name`: The name that appears in the front-end "Database" menu. Normally this would be the exact same thing as `title`, but might be useful if you want an abbreviated name for a long title in the menu. Also, if set to `null`, it won't appear in the "Database" menu at all. This is how lookup tables are hidden by default (so as to avoid cluttering the Database menu with loads of lookup tables that can be accessed another way).
 - `submenu`: If specified, the view will appear in a sub-menu in the front-end menu bar. This provides a way to keep data views organised and group related ones together, if desired. If not specified, the view will show in the root "Database" menu.
 - `enabled`: Whether or not the data view is active (i.e. visible in the UI). It can be useful to pre-configure a data view for a certain table before any data has actually been created for that table, and so it doesn't exist yet. In this case, set `enabled` to false so the view won't show in the menu and display an error state when viewed. Note -- whenever a new table is created in the database any existing data views are automatically enabled.
 
@@ -270,6 +276,7 @@ The input fields are as follows:
 }
 ```  
 `firstName` and `lastName` are native fields on the "user" table, and are at the root level of the passed-in object here. Note that this object contains *all* fields, not just the ones being returned, so you can extract values from fields not being returned, such as in this case (where you wouldn't want to return `firstName` and `lastName` fields as well as a `fullName` column.)
+- `hideIfNull`: if `true`, then this field will be hidden completely when its value is `null`. This only affects the single-item "Details" view, which displays each value in its own row.
 
 (Again, columns relating to sorting or filtering (`sort_column`, `filter_parameters`, `filter_expression`, `filter_data_type`) are explained in [Data View Filters](Data-View-Filters.md))
 

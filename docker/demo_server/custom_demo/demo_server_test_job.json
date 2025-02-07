@@ -1,0 +1,14 @@
+{
+  "description": "This will print some text",
+  "command": { "name": "test", "text": "Hello!" },
+  "successEmail": {
+    "to": "carl@msupply.foundation",
+    "subject": "Some text has been printed on the server",
+    "message": "Nice :)"
+  },
+  "failEmail": {
+    "to": "carl@msupply.foundation",
+    "subject": "Oh dear :(",
+    "message": "The text failed to print"
+  }
+}

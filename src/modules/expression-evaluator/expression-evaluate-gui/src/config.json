@@ -9,6 +9,6 @@
     "idleTimeoutMillis": 30000,
     "connectionTimeoutMillis": 20000
   },
-  "graphQLendpoint": "http://localhost:5000/graphql",
+  "graphQLendpoint": "http://localhost:8080/graphql",
   "postgresInterfacePort": 3006
 }

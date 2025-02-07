@@ -5,7 +5,7 @@ import { errorMessage } from '../../components/utilityFunctions'
 const ExportCsv = async (request: any, reply: any) => {
   const tableId = Number(request.params.lookupTableId)
 
-  const lookupTableService = await LookupTableService({ tableId })
+  const lookupTableService = await LookupTableService({ tableId, dataViewCode: 'ignore' })
   try {
     const tableData = await lookupTableService.getAllRowsForTable()
 

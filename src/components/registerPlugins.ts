@@ -10,7 +10,7 @@ import path from 'path'
 const isEqual = require('deep-equal')
 import { getAppEntryPointDir } from './utilityFunctions'
 import config from '../config'
-import DBConnect from './databaseConnect'
+import DBConnect from './database/databaseConnect'
 import { ActionPlugin } from '../types'
 
 const pluginsFolderFull = path.join(getAppEntryPointDir(), config.pluginsFolder)

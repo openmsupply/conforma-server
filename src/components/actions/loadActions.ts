@@ -1,5 +1,5 @@
 import { ActionLibrary } from '../../types'
-import DBConnect from '../databaseConnect'
+import DBConnect from '../database/databaseConnect'
 import { errorMessage, getAppEntryPointDir } from '../utilityFunctions'
 import path from 'path'
 

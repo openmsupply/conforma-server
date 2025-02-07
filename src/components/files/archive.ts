@@ -3,7 +3,7 @@ Script to archive files older than a certain threshold
 Please see https://github.com/openmsupply/conforma-server/discussions/1059 for details
 */
 
-import DBConnect from '../databaseConnect'
+import DBConnect from '../database/databaseConnect'
 import { DateTime } from 'luxon'
 import fsx from 'fs-extra'
 import path from 'path'

@@ -1,4 +1,4 @@
-import DBConnect from '../databaseConnect'
+import DBConnect from '../database/databaseConnect'
 import { getDistinctObjects, getValidTableName, objectKeysToCamelCase } from '../utilityFunctions'
 import {
   getPermissionNamesFromJWT,
@@ -18,20 +18,24 @@ import { ColumnDefinition, LinkedApplication, DataViewDetail } from './types'
 import { DataView } from '../../generated/graphql'
 import config from '../../config'
 import { FastifyReply, FastifyRequest } from 'fastify'
+import { MAX_32_BIT_INT } from '../../constants'
 
 // CONSTANTS
 const LOOKUP_TABLE_PERMISSION_NAME = 'lookupTables'
 
 const routeDataViews = async (request: FastifyRequest, reply: FastifyReply) => {
   const { permissionNames } = await getPermissionNamesFromJWT(request)
-  const dataViews = await DBConnect.getAllowedDataViews(permissionNames)
+  const dataViews = (await DBConnect.getAllowedDataViews(permissionNames)).filter(
+    (dv) => dv.menu_name !== null
+  )
   const distinctDataViews = getDistinctObjects(dataViews, 'code', 'priority')
   const dataViewResponse: DataViewDetail[] = distinctDataViews.map(
-    ({ table_name, title, code, submenu, default_filter_string }) => ({
+    ({ table_name, title, code, submenu, menu_name, default_filter_string }) => ({
       tableName: camelCase(table_name),
       title,
       code,
       urlSlug: kebabCase(code),
+      menuName: menu_name,
       submenu,
       defaultFilter: default_filter_string,
     })
@@ -40,18 +44,23 @@ const routeDataViews = async (request: FastifyRequest, reply: FastifyReply) => {
 }
 
 const routeDataViewTable = async (request: any, reply: any) => {
-  const authHeaders = request?.headers?.authorization
   const dataViewCode = camelCase(request.params.dataViewCode)
   const { userId, orgId, permissionNames } = await getPermissionNamesFromJWT(request)
   if (request.auth.isAdmin) permissionNames.push(LOOKUP_TABLE_PERMISSION_NAME)
   const query = objectKeysToCamelCase(request.query)
   const filter = request.body ?? {}
 
+  // The `returnRawData` option is used in application form queries, where we
+  // want the data in a simplified structure and no column/filter definition
+  // metaData
+  const returnRawData = query?.raw === 'true' ?? false
+
   // GraphQL pagination parameters
-  const first = query?.first ? Number(query.first) : 20
+  const first = query?.first ? Number(query.first) : returnRawData ? MAX_32_BIT_INT : 20
   const offset = query?.offset ? Number(query.offset) : 0
   const orderBy = query?.orderBy
   const ascending = query?.ascending ? query?.ascending === 'true' : true
+  const search = query?.search
 
   const {
     tableName,
@@ -67,11 +76,39 @@ const routeDataViewTable = async (request: any, reply: any) => {
   } = await buildAllColumnDefinitions({
     permissionNames,
     dataViewCode,
-    type: 'TABLE',
+    type: returnRawData ? 'RAW' : 'TABLE',
     filter,
     userId,
     orgId,
   })
+
+  if (search !== '' && searchFields.length > 0) {
+    // The "search" term may come in as a plain string rather than being
+    // pre-baked into the "filter" object (this would normally be the case when
+    // rawData is requested from application queries). In this case, we need to
+    // build a filter and merge it with the existing filter.
+    //
+    // GQL Filter properties are all "AND" clauses. The additional filter is
+    // applied as another "AND" clause (so just added to properties). If the
+    // additional filter targets multiple (search) fields, they'll be added as
+    // an "OR" array. And if the existing filter already has an "OR" clause,
+    // this will be merged with it. In all other cases, the additional filter
+    // will over-ride the existing filter if their properties conflict.
+    const additionalSearchFilter =
+      searchFields.length === 1
+        ? { [searchFields[0]]: { includesInsensitive: search } }
+        : { or: searchFields.map((field) => ({ [field]: { includesInsensitive: search } })) }
+
+    const newFilterKey = Object.keys(
+      additionalSearchFilter
+    )[0] as keyof typeof additionalSearchFilter
+
+    if (newFilterKey === 'or') {
+      gqlFilters.or = [...(gqlFilters.or ?? []), ...(additionalSearchFilter.or ?? [])]
+    } else {
+      gqlFilters[newFilterKey] = additionalSearchFilter[newFilterKey]
+    }
+  }
 
   // GraphQL query -- get ALL fields (passing JWT), with pagination
   const { fetchedRecords, totalCount, error } = await queryDataTable(
@@ -81,8 +118,7 @@ const routeDataViewTable = async (request: any, reply: any) => {
     first,
     offset,
     orderBy ?? defaultSortColumn ?? 'id',
-    ascending,
-    authHeaders
+    ascending
   )
   if (error) return error
 
@@ -98,15 +134,18 @@ const routeDataViewTable = async (request: any, reply: any) => {
     defaultFilterString
   )
 
+  if (returnRawData) return reply.send(response.tableRows.map(({ id, item }) => ({ id, ...item })))
+
   return reply.send(response)
 }
 
 const routeDataViewDetail = async (request: any, reply: any) => {
-  const authHeaders = request?.headers?.authorization
   const dataViewCode = camelCase(request.params.dataViewCode)
   const recordId = Number(request.params.id)
   const { userId, orgId, permissionNames } = await getPermissionNamesFromJWT(request)
   if (request.auth.isAdmin) permissionNames.push(LOOKUP_TABLE_PERMISSION_NAME)
+
+  const returnRawData = request.query?.raw === 'true' ?? false
 
   const {
     tableName,
@@ -119,19 +158,13 @@ const routeDataViewDetail = async (request: any, reply: any) => {
   } = await buildAllColumnDefinitions({
     permissionNames,
     dataViewCode,
-    type: 'DETAIL',
+    type: returnRawData ? 'RAW' : 'DETAIL',
     userId,
     orgId,
   })
 
   // GraphQL query -- get ALL fields (passing JWT), with pagination
-  const fetchedRecord = await queryDataTableSingleItem(
-    tableName,
-    fieldNames,
-    gqlFilters,
-    recordId,
-    authHeaders
-  )
+  const fetchedRecord = await queryDataTableSingleItem(tableName, fieldNames, gqlFilters, recordId)
 
   if (fetchedRecord?.error) return fetchedRecord
 
@@ -149,11 +182,12 @@ const routeDataViewDetail = async (request: any, reply: any) => {
     linkedApplications as LinkedApplication[]
   )
 
+  if (returnRawData) return reply.send(response.item)
+
   return reply.send(response)
 }
 
 const routeDataViewFilterList = async (request: any, reply: any) => {
-  const authHeaders = request?.headers?.authorization
   const dataViewCode = camelCase(request.params.dataViewCode)
   const columnName = request.params.column
   const {
@@ -206,8 +240,7 @@ const routeDataViewFilterList = async (request: any, reply: any) => {
       searchFields,
       gqlFilters,
       filterListBatchSize,
-      offset,
-      authHeaders
+      offset
     )
 
     if (error) return reply.send(error)

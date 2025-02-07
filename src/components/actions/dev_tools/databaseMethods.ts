@@ -1,5 +1,5 @@
 import { Decision } from '../../../generated/graphql'
-import DBConnect from '../../databaseConnect'
+import DBConnect from '../../database/databaseConnect'
 import { errorMessage } from '../../utilityFunctions'
 
 const databaseMethods = {

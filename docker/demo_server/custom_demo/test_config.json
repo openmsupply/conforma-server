@@ -1,0 +1,22 @@
+{
+  "watchFolder": "test_demo_requests",
+  "emailConfig": {
+    "host": "server.msupply.foundation",
+    "port": 465,
+    "secure": true,
+    "auth": {
+      "user": "irims-dev@sussol.net",
+      "pass": "env.SMTP_PASSWORD"
+    }
+  },
+  "emailDefaults": {
+    "fromName": "mSupply Foundation",
+    "fromEmail": "noreply@msupply.foundation",
+    "bcc": "carl@msupply.foundation"
+  },
+  "commandList": {
+    "docker_start": "source demo.env && sudo docker container rm conforma_demo_${port_host} -f || true && sudo -E docker run -d -t -p $port_host:3000 -e WEB_HOST=https://conforma-demo.msupply.org:${port_web} -e SMTP_PASSWORD=${SMTP_PASSWORD} -e DEMO_PW=${demo_password_hash} --name conforma_demo_${port_host} msupplyfoundation/conforma:$TAG",
+    "docker_stop": "sudo docker rm conforma_demo_${port_host} -f",
+    "test": "source demo.env && echo $text $SMTP_PASSWORD and Tag is $TAG"
+  }
+}

@@ -14,7 +14,7 @@ pgConnect.connect()
 
 // CONFIG -- GraphQL SETUP
 const fetch = require('node-fetch')
-const graphQLendpoint = 'http://localhost:5000/graphql'
+const graphQLendpoint = 'http://localhost:8080/graphql'
 
 // Basic (single level literals)
 
@@ -304,7 +304,7 @@ test('Test unresolved object', async () => {
     await evaluateExpression(testData.objectPropertyUnresolved, {
       objects: { application: testData.application },
     })
-  } catch (e) {
+  } catch (e: any) {
     expect(e.message).toMatch('Object property not found')
   }
 })
@@ -408,7 +408,6 @@ test('String substitution - repeated parameters', () => {
     expect(result).toBe('THIS is the same as THIS but not THAT')
   })
 })
-
 // GET operator
 test('GET: Check username is unique', () => {
   return evaluateExpression(testData.APIisUnique, {
@@ -478,10 +477,10 @@ test('Test Postgres get array of template names', () => {
     (result: any) => {
       expect(result).toEqual([
         'User Registration',
-        'Edit User Details',
         'Grant User Permissions',
         'Add User to Company',
         'Company License -- Modern medicines or Medical devices',
+        'Company License -- Modern medicines',
       ])
     }
   )
@@ -500,10 +499,10 @@ test('Test Postgres get template names -- no type', () => {
     (result: any) => {
       expect(result).toEqual([
         { name: 'User Registration' },
-        { name: 'Edit User Details' },
         { name: 'Grant User Permissions' },
         { name: 'Add User to Company' },
         { name: 'Company License -- Modern medicines or Medical devices' },
+        { name: 'Company License -- Modern medicines' },
       ])
     }
   )
@@ -895,7 +894,7 @@ test('Try and access non-indexable object', async () => {
         objects: { responses: testData.responses },
       }
     )
-  } catch (e) {
+  } catch (e: any) {
     expect(e.message).toMatch('Object not index-able')
   }
 })
@@ -908,7 +907,7 @@ test('Throw error -- bad API call', async () => {
       operator: 'API',
       children: [],
     })
-  } catch (e) {
+  } catch (e: any) {
     expect(e.message).toMatch('Invalid API query')
   }
 })
@@ -918,7 +917,7 @@ test('Error bubbles up from child -- unresolved object property', async () => {
     await evaluateExpression(testData.nestedErrorQuery, {
       objects: { responses: testData.responses },
     })
-  } catch (e) {
+  } catch (e: any) {
     expect(e.message).toMatch('Object property not found')
   }
 })

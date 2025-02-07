@@ -5,7 +5,7 @@
  */
 
 import { Trigger } from '../../generated/graphql'
-import DBConnect from '../databaseConnect'
+import DBConnect from '../database/databaseConnect'
 
 export const resumeTriggerProcessing = async () => {
   console.log('Checking for in-progress triggers...')

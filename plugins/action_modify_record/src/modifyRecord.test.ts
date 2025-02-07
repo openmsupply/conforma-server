@@ -1,7 +1,7 @@
 // Test suite for the modifyRecord AND modifyMultipleRecords Actions
 // Needs fresh database `yarn database_init`
 
-import DBConnect from '../../../src/components/databaseConnect'
+import DBConnect from '../../../src/components/database/databaseConnect'
 import { ActionQueueStatus } from '../../../src/generated/graphql'
 import { ActionApplicationData } from '../../../src/types'
 import { action as modifyRecord } from './index'

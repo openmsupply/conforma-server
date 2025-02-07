@@ -1,6 +1,6 @@
 // Test suite for the testResponses Action.
 
-import DBConnect from '../../../src/components/databaseConnect'
+import DBConnect from '../../../src/components/database/databaseConnect'
 import { ActionQueueStatus, Reviewability } from '../../../src/generated/graphql'
 import { action as trimResponses } from './index'
 import * as DatabaseMethods from './databaseMethods'

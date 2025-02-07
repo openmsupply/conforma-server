@@ -8,7 +8,7 @@ they've been hard-coded here in order to:
 */
 
 import { cloneDeep } from 'lodash'
-import DBConnect from '../databaseConnect'
+import DBConnect from '../database/databaseConnect'
 import { Trigger } from '../../generated/graphql'
 import { ActionInTemplate } from '../../types'
 

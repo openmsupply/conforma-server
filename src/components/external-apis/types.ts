@@ -1,4 +1,4 @@
-import { EvaluatorNode } from '@openmsupply/expression-evaluator/lib/types'
+import { EvaluatorNode } from '../../modules/expression-evaluator'
 
 type ApiAuthentication =
   | { type: 'Basic'; username: string; password: string }

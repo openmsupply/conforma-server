@@ -1,4 +1,4 @@
-import DBConnect from './databaseConnect'
+import DBConnect from './database/databaseConnect'
 import Scheduler, { RecurrenceRule, RecurrenceSpecObjLit } from 'node-schedule'
 import config from '../config'
 import { DateTime, Settings } from 'luxon'
@@ -36,13 +36,17 @@ const defaultSchedules: { [K in ScheduleType]: RecurrenceSpecObjLit } = {
 }
 
 type ScheduleType = 'action' | 'cleanup' | 'backup' | 'archive'
+type UnknownFunction = (...args: never[]) => unknown | void | Promise<void>
 
 export class Schedulers {
   private actionSchedule: Scheduler.Job
   private cleanupSchedule: Scheduler.Job
   private backupSchedule: Scheduler.Job
   private archiveSchedule: Scheduler.Job
+  private manualScheduleTimers: Record<string, NodeJS.Timeout>
   constructor() {
+    if (schedulerTestMode)
+      console.log('Scheduler in test mode, will run a scheduled event every 30 seconds...')
     this.actionSchedule = Scheduler.scheduleJob(
       getSchedule('action', schedulerTestMode, config.actionSchedule ?? config?.hoursSchedule),
       () => triggerScheduledActions()
@@ -53,12 +57,19 @@ export class Schedulers {
     )
     this.backupSchedule = Scheduler.scheduleJob(
       getSchedule('backup', schedulerTestMode, config?.backupSchedule) as RecurrenceRule,
-      () => createBackup(process.env.BACKUPS_PASSWORD)
+      () => {
+        if (config.skipBackup) {
+          console.log('Skipping automatic backup')
+          return
+        }
+        createBackup(process.env.BACKUPS_PASSWORD)
+      }
     )
     this.archiveSchedule = Scheduler.scheduleJob(
       getSchedule('archive', schedulerTestMode, config?.archiveSchedule) as RecurrenceRule,
       () => archiveFiles()
     )
+    this.manualScheduleTimers = {}
 
     console.log('\nScheduled jobs started:')
     logNextAction(this.actionSchedule, 'action')
@@ -101,6 +112,64 @@ export class Schedulers {
     }
     if (result) logNextAction(scheduler, type)
     else console.log(`Problem updating ${type} schedule!`)
+  }
+
+  public manuallySchedule = async (
+    run: ScheduleType | UnknownFunction,
+    time: number, // minutes
+    cancelPrevious: boolean = true
+  ) => {
+    let method: UnknownFunction
+
+    switch (run) {
+      case 'action':
+        method = triggerScheduledActions
+        break
+      case 'archive':
+        method = archiveFiles
+        break
+      case 'cleanup':
+        method = cleanUpFiles
+        break
+      case 'backup':
+        method = createBackup // Not encrypted
+        break
+      default:
+        method = run
+    }
+
+    const scheduleMessage = `Manually scheduling ${
+      typeof run === 'function' ? 'Custom function' : run.toUpperCase()
+    } for ${time} minutes time`
+
+    const executionMessage = `Executing scheduled ${
+      typeof run === 'function' ? 'Custom function' : run.toUpperCase()
+    }`
+
+    if (!cancelPrevious) {
+      console.log(scheduleMessage)
+      setTimeout(() => {
+        console.log(executionMessage)
+        method()
+      }, time * 60_000)
+      return
+    }
+
+    const timerKey = typeof run === 'function' ? run.toString() : run
+    if (this.manualScheduleTimers[timerKey]) {
+      console.log(
+        `Cancelling previously scheduled ${
+          typeof run === 'function' ? 'Custom function' : run.toUpperCase()
+        }`
+      )
+      clearTimeout(this.manualScheduleTimers[timerKey])
+    }
+
+    console.log(scheduleMessage)
+    this.manualScheduleTimers[timerKey] = setTimeout(() => {
+      console.log(executionMessage)
+      method()
+    }, time * 60_000)
   }
 }
 

@@ -110,7 +110,7 @@ const sendNotification: ActionPluginType = async ({ parameters, applicationData,
             rejected || ''
           }\nPending: ${pending || ''}`
           if (
-            response.match(/250 OK*/) &&
+            response.match(/250*/) &&
             (!rejected || rejected.length === 0) &&
             (!pending || pending.length === 0)
           ) {
@@ -191,11 +191,13 @@ Input elements must be one of:
 - TO-DO: Handle more types of input format (e.g. raw path/url strings)
 */
 const prepareAttachments = async (
-  attachments: string[] | Attachment[] | string | Attachment,
+  attachments: string[] | Attachment[] | string | Attachment | null,
   appRootFolder: string,
   filesFolder: string
 ): Promise<Attachment[]> => {
-  const attachmentInput = Array.isArray(attachments) ? attachments : [attachments]
+  const attachmentInput = (Array.isArray(attachments) ? attachments : [attachments]).filter(
+    (a) => a !== null
+  )
   const attachmentObjects: Attachment[] = []
   for (const file of attachmentInput) {
     if (typeof file === 'object') {

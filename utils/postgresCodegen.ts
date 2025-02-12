@@ -6,7 +6,7 @@
 
 import { execSync } from 'child_process'
 import { Client } from 'pg'
-import config from '../src/config.json'
+import config from './config.json'
 
 const run = async () => {
   const db = new Client(config.postgresConfig)

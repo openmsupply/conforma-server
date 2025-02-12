@@ -55,7 +55,6 @@ import {
   updateMaintenanceModeInConfig,
 } from './components/other/routeServerStatus'
 import { routeFileLists } from './components/files/routes'
-import { routeGetFigTreeFragments } from './components/fig-tree-evaluator/routeGetFigTreeFragments'
 import { cleanupDataTables } from './lookup-table/utils/cleanupDataTables'
 import { templateRoutes } from './components/template-import-export'
 import { convertHandler, pgMiddleware } from './postgraphile'

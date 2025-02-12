@@ -7,7 +7,6 @@ import { readJsonSync } from 'fs-extra'
 import path from 'path'
 import { getAppEntryPointDir } from './components/utilityFunctions'
 import { merge } from 'lodash'
-// import configJson from './config.json'
 
 const preferencesFolder = '../preferences'
 const preferencesFileName = 'preferences.json'

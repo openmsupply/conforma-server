@@ -186,7 +186,7 @@ const startServer = async () => {
             return reply.send({ success: false, message: 'Unable to retrieve file' })
           }
         })
-        server.get('/get-fragments', routeGetFragments)
+        server.get('/fragments', routeGetFragments)
         done()
       },
       { prefix: '/public' }
@@ -237,7 +237,6 @@ const startServer = async () => {
     server.get('/data-views/:dataViewCode/:id', routeDataViewDetail)
     server.post('/data-views/:dataViewCode/filterList/:column', routeDataViewFilterList)
     server.get('/files', routeFileLists)
-    server.get('/fig-tree-fragments/:frontOrBack', routeGetFigTreeFragments)
     server.get('/check-triggers', routeTriggers)
     server.post('/preview-actions', routePreviewActions)
     server.post('/extend-application', routeExtendApplication)

@@ -9,7 +9,6 @@ import { ExternalApiConfigs, QueryParameters } from './types'
 import { getApplicationData } from '../actions'
 import { getPermissionNamesFromJWT, getUserInfo } from '../permissions/loginHelpers'
 import { ActionApplicationData } from '../../types'
-import functions from '../fig-tree-evaluator/functions'
 import { errorMessage } from '../utilityFunctions'
 
 export type AccessExternalApiQuery = {
@@ -72,8 +71,7 @@ export const routeAccessExternalApi = async (
   const evaluatorData: {
     user: typeof user
     applicationData?: ActionApplicationData
-    functions: typeof functions
-  } = { user, functions }
+  } = { user }
 
   // ApplicationData only available if an applicationId is provided as a query
   // parameter, and only if user has permission to view that application

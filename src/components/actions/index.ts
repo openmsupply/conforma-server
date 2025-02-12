@@ -1,4 +1,3 @@
-export * from '../fig-tree-evaluator/functions'
 export * from './getApplicationData'
 export * from './helpers'
 export * from './getApplicationDataRoute'

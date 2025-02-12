@@ -47,7 +47,8 @@ export const routeGetFragments = async (
       : 'AND front_end = TRUE'
 
     const sqlQuery = `
-      SELECT id, code, name, description, expression
+      SELECT id, name, 
+        expression, metadata
       FROM evaluator_fragment
       WHERE (
              $1 && permission_names
@@ -56,12 +57,21 @@ export const routeGetFragments = async (
            )
        ${sqlClause};`
 
-    const fragments = (
+    const queryResult = (
       await DBConnect.query({
         text: sqlQuery,
         values: [permissionNames],
       })
     ).rows
+
+    const fragments = queryResult.reduce(
+      (frags, { name, expression, metadata }) => ({
+        ...frags,
+        [name]: { ...expression, metadata: metadata ?? undefined },
+      }),
+      {}
+    )
+
     return reply.send(fragments)
   } catch (err) {
     returnApiError(err, reply)

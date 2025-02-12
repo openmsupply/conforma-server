@@ -1,6 +1,6 @@
 import { FetchClient, FigTreeEvaluator, SQLNodePostgres } from 'fig-tree-evaluator'
 import fetch from 'node-fetch'
-import functions from './functions'
+import { functions } from './customFunctions'
 import { getAdminJWT } from '../permissions/loginHelpers'
 import { Client } from 'pg'
 import PostgresConfig from '../database/postgresConfig.json'
@@ -34,7 +34,9 @@ getAdminJWT().then((result) =>
 databaseConnection.connect().then(() =>
   FigTree.evaluate({
     operator: 'SQL',
-    query: 'SELECT name, expression FROM evaluator_fragment WHERE back_end = TRUE;',
+    query: `SELECT name, expression
+              FROM evaluator_fragment
+            WHERE back_end = TRUE;`,
     fallback: [],
   }).then((result) => {
     const fragments = (result as any[]).reduce((acc, fragment) => {

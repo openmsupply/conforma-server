@@ -29,7 +29,6 @@ const routeDataViews = async (request: FastifyRequest, reply: FastifyReply) => {
   const dataViews = (await DBConnect.getAllowedDataViews(permissionNames)).filter(
     (dv) => dv.menu_name !== null
   )
-  console.log('dataViews', dataViews)
   const distinctDataViews = getDistinctObjects(dataViews, 'code', 'priority')
   const dataViewResponse: DataViewDetail[] = distinctDataViews.map(
     ({ table_name, title, code, submenu, menu_name, default_filter_string }) => ({

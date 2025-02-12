@@ -1364,10 +1364,9 @@ const migrateData = async () => {
     await DB.changeSchema(`
       CREATE TABLE IF NOT EXISTS public.evaluator_fragment (
         id serial PRIMARY KEY,
-        code varchar UNIQUE NOT NULL,
-        name varchar NOT NULL,
-        description varchar,
+        name varchar UNIQUE NOT NULL,
         expression jsonb NOT NULL,
+        metadata jsonb,
         front_end boolean NOT NULL DEFAULT TRUE,
         back_end boolean NOT NULL DEFAULT TRUE,
         permission_names varchar[]

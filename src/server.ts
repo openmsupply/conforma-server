@@ -186,6 +186,7 @@ const startServer = async () => {
             return reply.send({ success: false, message: 'Unable to retrieve file' })
           }
         })
+        server.get('/get-fragments', routeGetFigTreeFragments)
         done()
       },
       { prefix: '/public' }

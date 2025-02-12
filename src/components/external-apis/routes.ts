@@ -3,12 +3,11 @@ import db from '../database/databaseConnect'
 import path from 'path'
 import config from '../../config'
 import { get as extractProperty } from 'lodash'
-import { getPermissionNamesFromJWT } from '../data_display/helpers'
 import axios, { AxiosError, AxiosRequestConfig } from 'axios'
 import { constructAuthHeader, constructQueryObject, validateResult } from './helpers'
 import { ExternalApiConfigs, QueryParameters } from './types'
 import { getApplicationData } from '../actions'
-import { getUserInfo } from '../permissions/loginHelpers'
+import { getPermissionNamesFromJWT, getUserInfo } from '../permissions/loginHelpers'
 import { ActionApplicationData } from '../../types'
 import functions from '../fig-tree-evaluator/functions'
 import { errorMessage } from '../utilityFunctions'
@@ -49,7 +48,9 @@ export const routeAccessExternalApi = async (
   } = routeConfig
 
   if (permissions) {
-    const { permissionNames } = await getPermissionNamesFromJWT(request)
+    const { permissionNames } = await getPermissionNamesFromJWT(
+      (request as FastifyRequest & { auth: { userId: number; orgId: number } }).auth
+    )
     const validPermissions = permissions.filter((permission) =>
       permissionNames.includes(permission)
     )

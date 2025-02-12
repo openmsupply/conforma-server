@@ -59,6 +59,7 @@ import { routeGetFigTreeFragments } from './components/fig-tree-evaluator/routeG
 import { cleanupDataTables } from './lookup-table/utils/cleanupDataTables'
 import { templateRoutes } from './components/template-import-export'
 import { convertHandler, pgMiddleware } from './postgraphile'
+import { routeGetFragments } from './components/fig-tree-evaluator/routes'
 
 require('dotenv').config()
 
@@ -186,7 +187,7 @@ const startServer = async () => {
             return reply.send({ success: false, message: 'Unable to retrieve file' })
           }
         })
-        server.get('/get-fragments', routeGetFigTreeFragments)
+        server.get('/get-fragments', routeGetFragments)
         done()
       },
       { prefix: '/public' }

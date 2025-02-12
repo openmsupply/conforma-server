@@ -1368,8 +1368,8 @@ const migrateData = async () => {
         name varchar NOT NULL,
         description varchar,
         expression jsonb NOT NULL,
-        front_end boolean DEFAULT TRUE,
-        back_end boolean DEFAULT TRUE,
+        front_end boolean NOT NULL DEFAULT TRUE,
+        back_end boolean NOT NULL DEFAULT TRUE,
         permission_names varchar[]
       )`)
   }

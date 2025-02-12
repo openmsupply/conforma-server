@@ -1,7 +1,6 @@
 import DBConnect from '../database/databaseConnect'
 import { getDistinctObjects, getValidTableName, objectKeysToCamelCase } from '../utilityFunctions'
 import {
-  getPermissionNamesFromJWT,
   buildAllColumnDefinitions,
   constructTableResponse,
   constructDetailsResponse,
@@ -19,15 +18,18 @@ import { DataView } from '../../generated/graphql'
 import config from '../../config'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { MAX_32_BIT_INT } from '../../constants'
+import { getPermissionNamesFromJWT } from '../permissions/loginHelpers'
 
 // CONSTANTS
 const LOOKUP_TABLE_PERMISSION_NAME = 'lookupTables'
 
 const routeDataViews = async (request: FastifyRequest, reply: FastifyReply) => {
-  const { permissionNames } = await getPermissionNamesFromJWT(request)
+  const authData = (request as FastifyRequest & { auth: { userId: number; orgId: number } }).auth
+  const { permissionNames } = await getPermissionNamesFromJWT(authData)
   const dataViews = (await DBConnect.getAllowedDataViews(permissionNames)).filter(
     (dv) => dv.menu_name !== null
   )
+  console.log('dataViews', dataViews)
   const distinctDataViews = getDistinctObjects(dataViews, 'code', 'priority')
   const dataViewResponse: DataViewDetail[] = distinctDataViews.map(
     ({ table_name, title, code, submenu, menu_name, default_filter_string }) => ({
@@ -45,7 +47,7 @@ const routeDataViews = async (request: FastifyRequest, reply: FastifyReply) => {
 
 const routeDataViewTable = async (request: any, reply: any) => {
   const dataViewCode = camelCase(request.params.dataViewCode)
-  const { userId, orgId, permissionNames } = await getPermissionNamesFromJWT(request)
+  const { userId, orgId, permissionNames } = await getPermissionNamesFromJWT(request.auth)
   if (request.auth.isAdmin) permissionNames.push(LOOKUP_TABLE_PERMISSION_NAME)
   const query = objectKeysToCamelCase(request.query)
   const filter = request.body ?? {}
@@ -53,7 +55,7 @@ const routeDataViewTable = async (request: any, reply: any) => {
   // The `returnRawData` option is used in application form queries, where we
   // want the data in a simplified structure and no column/filter definition
   // metaData
-  const returnRawData = query?.raw === 'true' ?? false
+  const returnRawData = query?.raw === 'true'
 
   // GraphQL pagination parameters
   const first = query?.first ? Number(query.first) : returnRawData ? MAX_32_BIT_INT : 20
@@ -142,10 +144,10 @@ const routeDataViewTable = async (request: any, reply: any) => {
 const routeDataViewDetail = async (request: any, reply: any) => {
   const dataViewCode = camelCase(request.params.dataViewCode)
   const recordId = Number(request.params.id)
-  const { userId, orgId, permissionNames } = await getPermissionNamesFromJWT(request)
+  const { userId, orgId, permissionNames } = await getPermissionNamesFromJWT(request.auth)
   if (request.auth.isAdmin) permissionNames.push(LOOKUP_TABLE_PERMISSION_NAME)
 
-  const returnRawData = request.query?.raw === 'true' ?? false
+  const returnRawData = request.query?.raw === 'true'
 
   const {
     tableName,
@@ -197,7 +199,7 @@ const routeDataViewFilterList = async (request: any, reply: any) => {
     includeNull,
     filterList: filterListParameter,
   } = request.body ?? {}
-  const { userId, orgId, permissionNames } = await getPermissionNamesFromJWT(request)
+  const { userId, orgId, permissionNames } = await getPermissionNamesFromJWT(request.auth)
   if (request.auth.isAdmin) permissionNames.push(LOOKUP_TABLE_PERMISSION_NAME)
 
   const dataViews = (await DBConnect.getAllowedDataViews(permissionNames, dataViewCode))

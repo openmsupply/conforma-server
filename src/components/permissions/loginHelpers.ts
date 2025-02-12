@@ -8,6 +8,7 @@ import { baseJWT, compileJWT } from './rowLevelPolicyHelpers'
 import { Organisation, UserOrg } from '../../types'
 import { errorMessage } from '../utilityFunctions'
 import { DEFAULT_LOGOUT_TIME } from '../../constants'
+import { FastifyRequest } from 'fastify'
 
 const verifyPromise: any = promisify(verify)
 const signPromise: any = promisify(sign)
@@ -23,6 +24,37 @@ const getTokenData = async (jwtToken: string) => {
     console.log('Cannot parse JWT')
     return { error: errorMessage(err) }
   }
+}
+
+// Authorised routes have a pre-validation hook to inject "auth" data onto the
+// request object. Public routes do not, but a few of them need to check the
+// current users permissions. So this function provides basically the same
+// functionality, but doesn't reject the request if no auth data is present. It
+// can be called from Public routes as required.
+const getPublicTokenData = async (request: FastifyRequest) => {
+  const token = extractJWTfromHeader(request)
+  const { error, ...tokenData } = await getTokenData(token)
+  return tokenData
+}
+
+type userOrgPermissions = {
+  userId: number
+  orgId?: number
+  permissionNames: string[]
+}
+
+type TokenData = {
+  userId?: number
+  orgId?: number
+}
+
+const getPermissionNamesFromJWT = async (tokenData: TokenData): Promise<userOrgPermissions> => {
+  const { userId, orgId } = tokenData
+  if (!userId) return { userId: 0, orgId: 0, permissionNames: [] }
+  const permissionNames = await (
+    await databaseConnect.getUserOrgPermissionNames(userId, orgId)
+  ).map((result) => result.permissionName)
+  return { userId, orgId, permissionNames }
 }
 
 type UserOrgParameters = {
@@ -133,4 +165,11 @@ const getAdminJWT = async () => {
   return await signPromise({ ...baseJWT, isAdmin: true, role: 'postgres' }, config.jwtSecret)
 }
 
-export { extractJWTfromHeader, getUserInfo, getTokenData, getAdminJWT }
+export {
+  extractJWTfromHeader,
+  getUserInfo,
+  getTokenData,
+  getAdminJWT,
+  getPublicTokenData,
+  getPermissionNamesFromJWT,
+}

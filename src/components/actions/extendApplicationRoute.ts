@@ -2,7 +2,7 @@ import { combineRequestParams, errorMessage } from '../utilityFunctions'
 import { PermissionPolicyType, Trigger, TriggerQueueStatus } from '../../generated/graphql'
 import { DateTime } from 'luxon'
 import DBConnect from '../database/databaseConnect'
-import { getPermissionNamesFromJWT } from '../data_display/helpers'
+import { getPermissionNamesFromJWT } from '../permissions/loginHelpers'
 
 export const routeExtendApplication = async (request: any, reply: any) => {
   const { applicationId, eventCode, extensionTime, data } = combineRequestParams(request, 'camel')
@@ -10,7 +10,7 @@ export const routeExtendApplication = async (request: any, reply: any) => {
   // Check permissions first -- currently we just check user has ANY Reviewing
   // permissions for current template.
   // TO-DO: define specific permission names required for extending deadlines
-  const { permissionNames: userPermissions } = await getPermissionNamesFromJWT(request)
+  const { permissionNames: userPermissions } = await getPermissionNamesFromJWT(request.auth)
 
   const templatePermissions = (
     await DBConnect.getTemplatePermissionsFromApplication(Number(applicationId))

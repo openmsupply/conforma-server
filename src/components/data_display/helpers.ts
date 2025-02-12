@@ -30,21 +30,7 @@ import { getAdminJWT } from '../permissions/loginHelpers'
 
 // CONSTANTS
 const REST_OF_DATAVIEW_FIELDS = '...'
-const graphQLEndpoint = config.graphQLendpoint
 const FILTER_COLUMN_SUFFIX = capitaliseFirstLetter(camelCase(config.filterColumnSuffix))
-
-type JWTData = {
-  userId: number
-  orgId?: number
-  permissionNames: string[]
-}
-export const getPermissionNamesFromJWT = async (request: any): Promise<JWTData> => {
-  const { userId, orgId } = request.auth
-  const permissionNames = await (
-    await DBConnect.getUserOrgPermissionNames(userId, orgId)
-  ).map((result) => result.permissionName)
-  return { userId, orgId, permissionNames }
-}
 
 export const buildAllColumnDefinitions = async ({
   permissionNames,

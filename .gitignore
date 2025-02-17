@@ -49,6 +49,9 @@ typings/
 /snapshot_test_scripts
 /backups
 
+# Folder where local config files can be stored
+/local
+
 #GraphQL schema auto-generated
 database/schema.graphql
 database/schema.json

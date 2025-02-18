@@ -79,7 +79,7 @@ if (!web_host) {
 const startServer = async () => {
   await migrateData()
   await loadActionPlugins() // Connects to Database and listens for Triggers
-  await loadStartupSnapshot()
+  await loadStartupSnapshot() // Only runs if specified and on a fresh install
   createDefaultDataFolders()
   await cleanupDataTables()
   await updateRowPolicies()

@@ -58,6 +58,7 @@ import { routeFileLists } from './components/files/routes'
 import { cleanupDataTables } from './lookup-table/utils/cleanupDataTables'
 import { templateRoutes } from './components/template-import-export'
 import { convertHandler, pgMiddleware } from './postgraphile'
+import { loadStartupSnapshot } from './components/snapshots/loadStartupSnapshot'
 
 require('dotenv').config()
 
@@ -78,6 +79,7 @@ if (!web_host) {
 const startServer = async () => {
   await migrateData()
   await loadActionPlugins() // Connects to Database and listens for Triggers
+  await loadStartupSnapshot()
   createDefaultDataFolders()
   await cleanupDataTables()
   await updateRowPolicies()

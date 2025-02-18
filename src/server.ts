@@ -59,6 +59,7 @@ import { cleanupDataTables } from './lookup-table/utils/cleanupDataTables'
 import { templateRoutes } from './components/template-import-export'
 import { convertHandler, pgMiddleware } from './postgraphile'
 import { routeGetFragments } from './components/fig-tree-evaluator/routes'
+import { loadStartupSnapshot } from './components/snapshots/loadStartupSnapshot'
 
 require('dotenv').config()
 
@@ -79,6 +80,7 @@ if (!web_host) {
 const startServer = async () => {
   await migrateData()
   await loadActionPlugins() // Connects to Database and listens for Triggers
+  await loadStartupSnapshot() // Only runs if specified and on a fresh install
   createDefaultDataFolders()
   await cleanupDataTables()
   await updateRowPolicies()

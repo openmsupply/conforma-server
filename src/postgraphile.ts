@@ -20,6 +20,7 @@ export const pgMiddleware = postgraphile(
     pgDefaultRole: 'graphile_user',
     graphiql: true,
     enhanceGraphiql: true,
+    graphiqlRoute: '/server/graphiql',
     dynamicJson: true,
     jwtSecret: process.env.JWT_SECRET || 'devsecret',
     disableQueryLog:

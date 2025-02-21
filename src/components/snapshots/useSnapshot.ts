@@ -56,7 +56,6 @@ const useSnapshot: SnapshotOperation = async ({ snapshotName }) => {
 
     // Don't proceed if snapshot version higher than current installation
     const infoFile = path.join(snapshotFolder, `${INFO_FILE_NAME}.json`)
-    console.log(`Checking snapshot version...`)
     const snapshotVersion = fsSync.existsSync(infoFile)
       ? JSON.parse(
           await fs.readFile(infoFile, {

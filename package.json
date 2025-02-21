@@ -52,6 +52,7 @@
     "start": "yarn build && cd build && node server.js",
     "build": "./utils/build_all.sh",
     "test": "jest --runInBand",
+    "test_snapshot": "ts-node src/components/actions/dev_tools/testing/testSnapshot.ts --test",
     "database_init": "yarn snapshot use",
     "build_plugins": "node ./utils/pluginScripts/buildPlugins.js",
     "push_docs": "exec ./utils/push_docs_to_wiki.sh",

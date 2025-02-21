@@ -74,15 +74,23 @@ const trimResponses: ActionPluginType = async ({ parameters, applicationData, DB
       (responseArray) => responseArray[responseArray.length - 1].id
     )
 
+    type Response = {
+      applicationResponseId: number
+      templateElementId: number
+    }
     // Run delete operation on all in toDelete array (new method)
-    const deletedResponses = reviewId
-      ? await db.deleteReviewResponses(responsesToDelete)
-      : await db.deleteApplicationResponses(responsesToDelete)
+    const deletedResponses = (
+      reviewId
+        ? await db.deleteReviewResponses(responsesToDelete)
+        : await db.deleteApplicationResponses(responsesToDelete)
+    ).sort((a: Response, b: Response) => a.applicationResponseId - b.applicationResponseId)
 
     // Update timestamp of remaining responses (based on review/application latest status change timestamp)
-    const updatedResponses = reviewId
-      ? await db.updateReviewResponseSubmittedTimestamps(responsesToUpdate, reviewId)
-      : await db.updateApplicationResponseSubmittedTimestamps(responsesToUpdate, applicationId)
+    const updatedResponses = (
+      reviewId
+        ? await db.updateReviewResponseSubmittedTimestamps(responsesToUpdate, reviewId)
+        : await db.updateApplicationResponseSubmittedTimestamps(responsesToUpdate, applicationId)
+    ).sort((a: Response, b: Response) => a.applicationResponseId - b.applicationResponseId)
 
     console.log(`Deleted ${reviewId ? 'review' : 'application'} responses: `, deletedResponses)
     console.log(`Updated ${reviewId ? 'review' : 'application'} responses: `, updatedResponses)
